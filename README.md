@@ -33,6 +33,9 @@ Then open http://localhost:8000
 
 ## Deploying
 
+Run `python3 tools/stamp.py` before committing. It re-versions the CSS/JS links
+in `index.html` so phones pick up the new build instead of a cached one.
+
 Push to `main`. In **Settings → Pages**, set the source to **GitHub Actions**; the workflow in `.github/workflows/pages.yml` publishes the repo root.
 
 ## Supabase
