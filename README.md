@@ -44,49 +44,15 @@ Project `qyhitluutjiscfcslnuy` is already configured in `js/config.js`. If
 Supabase or the CDN can't be reached, the app falls back to `localStorage` so it
 still works offline.
 
-Run this once in the Supabase SQL editor to create the table:
-
-```sql
-create table people (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  note text,
-  created_at timestamptz not null default now()
-);
-```
-
-Then enable row-level security and add policies. The quickest setup that lets
-the app read and write with the anon key:
-
-```sql
-create table foods (
-  id uuid primary key default gen_random_uuid(),
-  -- nullable: a null person_id is a shared food, shown in every profile
-  person_id uuid references people (id) on delete cascade,
-  name text not null,
-  image_url text,
-  expires_on date,
-  description text,
-  allergens jsonb not null default '[]',
-  created_at timestamptz not null default now()
-);
-
-alter table people enable row level security;
-alter table foods enable row level security;
-
-create policy "anon can read" on people for select to anon using (true);
-create policy "anon can insert" on people for insert to anon with check (true);
-create policy "anon can delete" on people for delete to anon using (true);
-
-create policy "anon can read food" on foods for select to anon using (true);
-create policy "anon can add food" on foods for insert to anon with check (true);
-create policy "anon can delete food" on foods for delete to anon using (true);
-```
+Run [`supabase.sql`](supabase.sql) in the Supabase SQL editor. It creates both
+tables and their policies, and is safe to re-run — existing objects are skipped
+rather than erroring. It defines `people`, `foods`, and policies letting the
+anon key read, insert and delete both.
 
 Uploaded pictures are shrunk to 640px JPEGs and stored inline in `image_url`
 as data URLs, so no storage bucket is needed.
 
-Be aware of what that means: the anon key and the password both ship to the
+Be aware of what those policies mean: the anon key and the password both ship to the
 browser, so anyone who opens the page source can read and add rows through the
 API directly. The password is a gate, not real security. If the people list
 should be private, swap these policies for Supabase Auth and scope rows to the
