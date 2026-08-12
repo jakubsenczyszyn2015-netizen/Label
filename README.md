@@ -9,6 +9,8 @@ A minimal label-printing app, built as a static site for GitHub Pages.
 - A `+` in the top-right to add a person, and a `×` on each row to remove one —
   deleting requires typing the person's name exactly before the button unlocks
 - Light theme by default; dark mode is wired up via `data-theme="dark"` on `<html>` and ready for a settings screen
+- Built for phones: safe-area insets for notches, 38px tap targets, no
+  focus-zoom on iOS, and a fallback for browsers without `<dialog>`
 
 ## Running locally
 

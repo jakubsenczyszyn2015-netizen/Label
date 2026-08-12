@@ -24,6 +24,43 @@ const deleteSubmit = document.getElementById("delete-submit");
 
 let pendingDelete = null;
 
+// Older phone browsers lack <dialog>; fall back to plain show/hide + a scrim.
+const nativeDialog = typeof HTMLDialogElement !== "undefined" &&
+  typeof dialog.showModal === "function";
+if (!nativeDialog) document.documentElement.classList.add("no-dialog");
+
+let scrim = null;
+
+function openModal(node) {
+  if (nativeDialog) {
+    node.showModal();
+    return;
+  }
+  scrim = document.createElement("div");
+  scrim.className = "scrim";
+  document.body.append(scrim);
+  node.setAttribute("open", "");
+}
+
+function closeModal(node) {
+  if (nativeDialog) {
+    node.close();
+    return;
+  }
+  node.removeAttribute("open");
+  scrim?.remove();
+  scrim = null;
+}
+
+if (!nativeDialog) {
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    pendingDelete = null;
+    closeModal(deleteDialog);
+    closeModal(dialog);
+  });
+}
+
 // Theme: white by default; a settings screen can flip this later.
 const theme = localStorage.getItem("label.theme");
 if (theme === "dark") document.documentElement.dataset.theme = "dark";
@@ -94,7 +131,7 @@ function askToDelete(person) {
   deleteTarget.textContent = person.name;
   deleteConfirm.value = "";
   deleteSubmit.disabled = true;
-  deleteDialog.showModal();
+  openModal(deleteDialog);
   deleteConfirm.focus();
 }
 
@@ -106,7 +143,7 @@ deleteConfirm.addEventListener("input", () => {
 
 deleteDialog.querySelector("[data-close]").addEventListener("click", () => {
   pendingDelete = null;
-  deleteDialog.close();
+  closeModal(deleteDialog);
 });
 
 deleteForm.addEventListener("submit", async (event) => {
@@ -115,7 +152,7 @@ deleteForm.addEventListener("submit", async (event) => {
   if (!person || deleteConfirm.value.trim() !== person.name) return;
 
   pendingDelete = null;
-  deleteDialog.close();
+  closeModal(deleteDialog);
 
   try {
     await deletePerson(person.id);
@@ -137,12 +174,12 @@ async function render() {
 
 document.getElementById("add-person").addEventListener("click", () => {
   personForm.reset();
-  dialog.showModal();
+  openModal(dialog);
   nameInput.focus();
 });
 
 dialog.querySelector("[data-close]").addEventListener("click", () => {
-  dialog.close();
+  closeModal(dialog);
 });
 
 personForm.addEventListener("submit", async (event) => {
@@ -150,7 +187,7 @@ personForm.addEventListener("submit", async (event) => {
   const name = nameInput.value.trim();
   if (!name) return;
 
-  dialog.close();
+  closeModal(dialog);
   try {
     await addPerson({ name, note: noteInput.value.trim() || null });
   } catch (error) {
