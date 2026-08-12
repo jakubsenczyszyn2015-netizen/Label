@@ -9,10 +9,16 @@ let client = null;
 async function getClient() {
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return null;
   if (!client) {
-    const { createClient } = await import(
-      "https://esm.sh/@supabase/supabase-js@2"
-    );
-    client = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+    try {
+      const { createClient } = await import(
+        "https://esm.sh/@supabase/supabase-js@2"
+      );
+      client = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+    } catch (error) {
+      // Offline or the CDN is unreachable — fall back to local storage.
+      console.warn("Supabase client unavailable:", error.message);
+      return null;
+    }
   }
   return client;
 }

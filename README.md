@@ -25,17 +25,11 @@ Push to `main`. In **Settings → Pages**, set the source to **GitHub Actions**;
 
 ## Supabase
 
-People are stored in `localStorage` until you fill in `js/config.js`:
+Project `qyhitluutjiscfcslnuy` is already configured in `js/config.js`. If
+Supabase or the CDN can't be reached, the app falls back to `localStorage` so it
+still works offline.
 
-```js
-window.LABEL_CONFIG = {
-  SUPABASE_URL: "https://xxxx.supabase.co",
-  SUPABASE_ANON_KEY: "...",
-  PASSWORD: "Labelapp32",
-};
-```
-
-Then create the table:
+Run this once in the Supabase SQL editor to create the table:
 
 ```sql
 create table people (
@@ -46,6 +40,18 @@ create table people (
 );
 ```
 
-Enable row-level security and add policies that match how you want the data
-reached. Note that the anon key and the password both ship to the browser — the
-password is a gate, not real security, so RLS is what actually protects the data.
+Then enable row-level security and add policies. The quickest setup that lets
+the app read and write with the anon key:
+
+```sql
+alter table people enable row level security;
+
+create policy "anon can read" on people for select to anon using (true);
+create policy "anon can insert" on people for insert to anon with check (true);
+```
+
+Be aware of what that means: the anon key and the password both ship to the
+browser, so anyone who opens the page source can read and add rows through the
+API directly. The password is a gate, not real security. If the people list
+should be private, swap these policies for Supabase Auth and scope rows to the
+signed-in user.

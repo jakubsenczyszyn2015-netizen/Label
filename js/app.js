@@ -76,6 +76,7 @@ function personRow(person) {
 async function render() {
   const people = await listPeople();
   list.replaceChildren(...people.map(personRow));
+  empty.textContent = "No people yet. Tap + to add one.";
   empty.hidden = people.length > 0;
 }
 
@@ -99,6 +100,9 @@ personForm.addEventListener("submit", async (event) => {
     await addPerson({ name, note: noteInput.value.trim() || null });
   } catch (error) {
     console.error("Could not add person:", error.message);
+    empty.hidden = false;
+    empty.textContent = "Could not save. Check your connection and try again.";
+    return;
   }
   render();
 });
