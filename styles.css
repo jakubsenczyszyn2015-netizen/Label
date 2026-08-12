@@ -1,0 +1,239 @@
+:root {
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --surface-2: #ffffff;
+  --line: #e3e6ea;
+  --text: #1b1e22;
+  --muted: #8a9199;
+  --blue: #5c9bd1;
+  --blue-soft: #eaf2fa;
+  --radius: 16px;
+}
+
+/* Dark mode is opt-in from settings later; default stays white. */
+:root[data-theme="dark"] {
+  --bg: #14171a;
+  --surface: #1b1f23;
+  --surface-2: #21262b;
+  --line: #2c3238;
+  --text: #eef1f4;
+  --muted: #8d959d;
+  --blue-soft: #1e2933;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------- Lock screen ---------- */
+.lock {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+}
+
+.lock-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
+}
+
+.lock-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.lock-form {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.lock-error {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: #d05b5b;
+}
+
+/* ---------- Fields & buttons ---------- */
+.field {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.field:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-soft);
+}
+
+.btn {
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  font: 600 15px/1 inherit;
+  cursor: pointer;
+  transition: filter .15s ease;
+}
+
+.btn:hover { filter: brightness(1.05); }
+.btn.ghost { background: transparent; color: var(--muted); }
+
+/* ---------- App ---------- */
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 22px 18px 40px;
+}
+
+.topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.plus {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 21px;
+  line-height: 1;
+  cursor: pointer;
+  transition: filter .15s ease;
+}
+
+.plus:hover { filter: brightness(0.97); }
+
+/* Short centered rule that stops well before the edges */
+.divider {
+  width: 56%;
+  max-width: 260px;
+  height: 1px;
+  margin: 12px auto 20px;
+  background: var(--line);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px;
+}
+
+.people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+
+.avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--blue-soft);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.person-name { font-size: 15px; }
+.person-note { font-size: 13px; color: var(--muted); }
+
+.empty {
+  margin: 0;
+  padding: 26px 10px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------- Dialog ---------- */
+.dialog {
+  width: min(92vw, 320px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  padding: 18px;
+}
+
+.dialog::backdrop { background: rgba(20, 27, 34, 0.28); }
+
+.dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialog-title {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

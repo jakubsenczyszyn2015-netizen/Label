@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Label</title>
+<meta name="theme-color" content="#5C9BD1">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Lock screen -->
+<section id="lock" class="lock">
+  <img class="lock-icon" src="assets/icon.svg" alt="">
+  <h1 class="lock-title">Label</h1>
+  <form id="lock-form" class="lock-form" autocomplete="off">
+    <input id="password" class="field" type="password" placeholder="Password" aria-label="Password" required>
+    <button class="btn" type="submit">Unlock</button>
+    <p id="lock-error" class="lock-error" role="alert" hidden>Incorrect password</p>
+  </form>
+</section>
+
+<!-- Main app -->
+<main id="app" class="app" hidden>
+  <header class="topbar">
+    <h2 class="title">People</h2>
+    <button id="add-person" class="plus" type="button" aria-label="Add person">+</button>
+  </header>
+  <div class="divider"></div>
+
+  <section class="panel">
+    <ul id="people" class="people"></ul>
+    <p id="empty" class="empty">No people yet. Tap + to add one.</p>
+  </section>
+</main>
+
+<!-- Add person dialog -->
+<dialog id="person-dialog" class="dialog">
+  <form id="person-form" method="dialog">
+    <h3 class="dialog-title">New person</h3>
+    <input id="person-name" class="field" type="text" placeholder="Name" maxlength="60" required>
+    <input id="person-note" class="field" type="text" placeholder="Note (optional)" maxlength="80">
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" data-close>Cancel</button>
+      <button class="btn" type="submit">Add</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="js/config.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
