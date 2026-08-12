@@ -47,8 +47,12 @@ export async function listPeople() {
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.warn("Supabase read failed, using local copy:", error.message);
-    return readLocal();
+    const local = readLocal();
+    if (local.length) {
+      console.warn("Supabase read failed, using local copy:", error.message);
+      return local;
+    }
+    throw new Error(error.message);
   }
   return data;
 }
@@ -65,9 +69,11 @@ export async function addPerson({ name, note }) {
     return person;
   }
 
-  const { data, error } = await db.from(TABLE).insert(person).select().single();
+  // No .select() here: reading the row back would also need a select policy,
+  // and its absence would look like a failed insert even though the row saved.
+  const { error } = await db.from(TABLE).insert(person);
   if (error) throw new Error(error.message);
-  return data;
+  return person;
 }
 
 function readFoodsLocal() {
@@ -94,8 +100,14 @@ export async function listFoods() {
     .order("expires_on", { ascending: true });
 
   if (error) {
-    console.warn("Supabase read failed, using local copy:", error.message);
-    return readFoodsLocal();
+    // Falling back silently would look like an empty cupboard, so only do it
+    // when there is actually something local to show.
+    const local = readFoodsLocal();
+    if (local.length) {
+      console.warn("Supabase read failed, using local copy:", error.message);
+      return local;
+    }
+    throw new Error(error.message);
   }
   return data;
 }
@@ -112,9 +124,9 @@ export async function addFood(food) {
     return row;
   }
 
-  const { data, error } = await db.from(FOOD_TABLE).insert(row).select().single();
+  const { error } = await db.from(FOOD_TABLE).insert(row);
   if (error) throw new Error(error.message);
-  return data;
+  return row;
 }
 
 export async function deleteFood(id) {

@@ -272,7 +272,17 @@ function foodRow(food) {
 
 async function renderFoods() {
   if (!currentPerson) return;
-  const foods = await listFoods();
+
+  let foods;
+  try {
+    foods = await listFoods();
+  } catch (error) {
+    foodList.replaceChildren();
+    foodEmpty.hidden = false;
+    foodEmpty.textContent = `Could not load food: ${error.message}`;
+    return;
+  }
+
   foodList.replaceChildren(...foods.map(foodRow));
   foodEmpty.textContent = "No food yet. Tap + to add some.";
   foodEmpty.hidden = foods.length > 0;
@@ -428,7 +438,7 @@ foodForm.addEventListener("submit", async (event) => {
   } catch (error) {
     console.error("Could not add food:", error.message);
     foodEmpty.hidden = false;
-    foodEmpty.textContent = "Could not save. Check your connection and try again.";
+    foodEmpty.textContent = `Could not save: ${error.message}`;
     return;
   }
   renderFoods();
@@ -482,7 +492,16 @@ deleteForm.addEventListener("submit", async (event) => {
 });
 
 async function render() {
-  const people = await listPeople();
+  let people;
+  try {
+    people = await listPeople();
+  } catch (error) {
+    list.replaceChildren();
+    empty.hidden = false;
+    empty.textContent = `Could not load people: ${error.message}`;
+    return;
+  }
+
   list.replaceChildren(...people.map(personRow));
   empty.textContent = "No people yet. Tap + to add one.";
   empty.hidden = people.length > 0;
@@ -509,7 +528,7 @@ personForm.addEventListener("submit", async (event) => {
   } catch (error) {
     console.error("Could not add person:", error.message);
     empty.hidden = false;
-    empty.textContent = "Could not save. Check your connection and try again.";
+    empty.textContent = `Could not save: ${error.message}`;
     return;
   }
   render();
