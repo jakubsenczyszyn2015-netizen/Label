@@ -24,7 +24,70 @@ export function shrinkToDataUrl(file) {
   });
 }
 
-export function imageSearchUrl(query) {
-  const term = encodeURIComponent(`${query} food`.trim());
-  return `https://duckduckgo.com/?q=${term}&iax=images&ia=images`;
+// Picture search runs against two free, key-less, CORS-friendly sources:
+// Open Food Facts for branded products, Wikimedia Commons for everything else.
+async function searchOpenFoodFacts(query, signal) {
+  const url = "https://world.openfoodfacts.org/cgi/search.pl?" + new URLSearchParams({
+    search_terms: query,
+    search_simple: "1",
+    action: "process",
+    json: "1",
+    page_size: "12",
+    fields: "product_name,brands,image_front_url,image_front_small_url",
+  });
+
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Open Food Facts returned ${response.status}`);
+
+  const body = await response.json();
+  return (body.products || [])
+    .filter((product) => product.image_front_url)
+    .map((product) => ({
+      thumb: product.image_front_small_url || product.image_front_url,
+      full: product.image_front_url,
+      title: [product.brands, product.product_name].filter(Boolean).join(" — "),
+    }));
+}
+
+async function searchCommons(query, signal) {
+  const url = "https://commons.wikimedia.org/w/api.php?" + new URLSearchParams({
+    action: "query",
+    format: "json",
+    origin: "*",
+    generator: "search",
+    gsrsearch: `${query} food`,
+    gsrnamespace: "6",
+    gsrlimit: "12",
+    prop: "imageinfo",
+    iiprop: "url",
+    iiurlwidth: "320",
+  });
+
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Wikimedia returned ${response.status}`);
+
+  const body = await response.json();
+  return Object.values(body.query?.pages || {})
+    .map((page) => ({
+      thumb: page.imageinfo?.[0]?.thumburl,
+      full: page.imageinfo?.[0]?.url,
+      title: (page.title || "").replace(/^File:|\.[a-z]+$/gi, ""),
+    }))
+    .filter((result) => result.thumb);
+}
+
+// One slow or broken source should never sink the whole search.
+export async function searchImages(query, signal) {
+  const results = await Promise.allSettled([
+    searchOpenFoodFacts(query, signal),
+    searchCommons(query, signal),
+  ]);
+
+  const found = results.flatMap((result) =>
+    result.status === "fulfilled" ? result.value : []);
+
+  if (!found.length && results.every((result) => result.status === "rejected")) {
+    throw new Error(results[0].reason?.message || "Search failed");
+  }
+  return found;
 }

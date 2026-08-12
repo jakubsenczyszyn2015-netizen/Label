@@ -115,6 +115,22 @@
   </form>
 </dialog>
 
+<!-- Picture search -->
+<dialog id="search-dialog" class="dialog wide">
+  <form id="search-form">
+    <h3 class="dialog-title">Find a picture</h3>
+    <div class="search-row">
+      <input id="search-query" class="field" type="search" placeholder="What is it?" required>
+      <button class="btn" type="submit">Search</button>
+    </div>
+  </form>
+  <p id="search-status" class="empty">Type a name and search.</p>
+  <div id="search-results" class="results"></div>
+  <div class="dialog-actions">
+    <button class="btn ghost" type="button" data-close>Close</button>
+  </div>
+</dialog>
+
 <!-- Delete confirmation -->
 <dialog id="delete-dialog" class="dialog">
   <form id="delete-form" method="dialog">

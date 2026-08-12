@@ -3,7 +3,7 @@ import {
   listFoods, addFood, deleteFood,
 } from "./store.js";
 import { ALLERGENS } from "./allergens.js";
-import { shrinkToDataUrl, imageSearchUrl } from "./image.js";
+import { shrinkToDataUrl, searchImages } from "./image.js";
 
 const cfg = window.LABEL_CONFIG || {};
 
@@ -52,16 +52,18 @@ const nativeDialog = typeof HTMLDialogElement !== "undefined" &&
   typeof dialog.showModal === "function";
 if (!nativeDialog) document.documentElement.classList.add("no-dialog");
 
-let scrim = null;
+// One scrim per open dialog, so stacking them stays consistent.
+const scrims = new Map();
 
 function openModal(node) {
   if (nativeDialog) {
     node.showModal();
     return;
   }
-  scrim = document.createElement("div");
+  const scrim = document.createElement("div");
   scrim.className = "scrim";
   document.body.append(scrim);
+  scrims.set(node, scrim);
   node.setAttribute("open", "");
 }
 
@@ -71,16 +73,15 @@ function closeModal(node) {
     return;
   }
   node.removeAttribute("open");
-  scrim?.remove();
-  scrim = null;
+  scrims.get(node)?.remove();
+  scrims.delete(node);
 }
 
 if (!nativeDialog) {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     pendingDelete = null;
-    closeModal(deleteDialog);
-    closeModal(dialog);
+    for (const node of document.querySelectorAll("dialog[open]")) closeModal(node);
   });
 }
 
@@ -314,15 +315,79 @@ foodFile.addEventListener("change", async () => {
   }
 });
 
+const searchDialog = document.getElementById("search-dialog");
+const searchForm = document.getElementById("search-form");
+const searchQuery = document.getElementById("search-query");
+const searchStatus = document.getElementById("search-status");
+const searchResults = document.getElementById("search-results");
+
+let searchRun = null;
+
 document.getElementById("search-btn").addEventListener("click", () => {
-  const query = foodName.value.trim();
-  if (!query) {
-    foodName.focus();
+  searchQuery.value = foodName.value.trim();
+  searchResults.replaceChildren();
+  searchStatus.hidden = false;
+  searchStatus.textContent = "Type a name and search.";
+  openModal(searchDialog);
+  searchQuery.focus();
+  if (searchQuery.value) searchForm.requestSubmit();
+});
+
+searchDialog.querySelector("[data-close]").addEventListener("click", () => {
+  searchRun?.abort();
+  closeModal(searchDialog);
+});
+
+searchForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const query = searchQuery.value.trim();
+  if (!query) return;
+
+  searchRun?.abort();
+  searchRun = new AbortController();
+  const { signal } = searchRun;
+
+  searchResults.replaceChildren();
+  searchStatus.hidden = false;
+  searchStatus.textContent = "Searching…";
+
+  let results;
+  try {
+    results = await searchImages(query, signal);
+  } catch (error) {
+    if (signal.aborted) return;
+    searchStatus.textContent = "Search failed. Check your connection.";
     return;
   }
-  // Opens an image search; paste the picture's link back into the field below.
-  window.open(imageSearchUrl(query), "_blank", "noopener");
-  foodImageUrl.focus();
+  if (signal.aborted) return;
+
+  if (!results.length) {
+    searchStatus.textContent = `Nothing found for “${query}”.`;
+    return;
+  }
+
+  searchStatus.hidden = true;
+  searchResults.replaceChildren(...results.map((result) => {
+    const button = document.createElement("button");
+    button.className = "result";
+    button.type = "button";
+    button.title = result.title;
+
+    const img = document.createElement("img");
+    img.src = result.thumb;
+    img.alt = result.title;
+    img.loading = "lazy";
+    // Drop anything that fails to load rather than showing a broken tile.
+    img.addEventListener("error", () => button.remove());
+
+    button.append(img);
+    button.addEventListener("click", () => {
+      setPreview(result.full);
+      foodImageUrl.value = result.full;
+      closeModal(searchDialog);
+    });
+    return button;
+  }));
 });
 
 foodImageUrl.addEventListener("input", () => {

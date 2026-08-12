@@ -9,9 +9,11 @@ A minimal label-printing app, built as a static site for GitHub Pages.
 - A `+` in the top-right to add a person, and a `×` on each row to remove one —
   deleting requires typing the person's name exactly before the button unlocks
 - Tap a person to open their **Food** list — same header, line and `+`
-- Adding food takes a name, a picture (upload or paste a link, with a button
-  that opens a web image search), an expiration date, an optional description,
-  and tick boxes for all 14 declarable allergens
+- Adding food takes a name, a picture, an expiration date, an optional
+  description, and tick boxes for all 14 declarable allergens
+- Pictures come from an upload, a pasted link, or the built-in search — type a
+  name and tap a result. Search covers Open Food Facts (branded products) and
+  Wikimedia Commons; both are free and need no API key
 - A light/dark toggle sits in the top right of both screens; the choice is saved
   per device, never synced
 - Built for phones: safe-area insets for notches, 38px tap targets, no
