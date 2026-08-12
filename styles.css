@@ -26,15 +26,18 @@
 
 * { box-sizing: border-box; }
 
+/* App shell: the page itself never scrolls or bounces — only the list does. */
 html, body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
-button, input {
-  /* No double-tap zoom delay, no grey flash on tap. */
+body {
+  /* Kills double-tap-to-zoom across the whole app. */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -133,12 +136,32 @@ body {
 /* ---------- App ---------- */
 .app {
   max-width: 560px;
+  height: 100%;
   margin: 0 auto;
   padding: calc(22px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right))
-           calc(40px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
+           calc(16px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
+}
+
+/* Header stays put; the list below it takes the remaining height and scrolls. */
+.app > section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.app > section[hidden] { display: none; }
+
+.panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .topbar {
+  flex: none;
   position: relative;
   display: flex;
   align-items: center;
@@ -218,6 +241,7 @@ body {
 
 /* Short centered rule that stops well before the edges */
 .divider {
+  flex: none;
   width: 56%;
   max-width: 260px;
   height: 1px;
@@ -366,6 +390,22 @@ body {
   border-radius: 12px;
   background: var(--surface);
 }
+
+.label-preview {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  margin: 4px 0 2px;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.detail-actions .btn { flex: 1; }
 
 .search-row {
   display: flex;

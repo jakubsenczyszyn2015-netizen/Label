@@ -18,6 +18,10 @@ A minimal label-printing app, built as a static site for GitHub Pages.
   deleting a food removes it everywhere
 - A light/dark toggle sits in the top right of both screens; the choice is saved
   per device, never synced
+- Tap a food to preview its label, then **Edit** it, **Save image** (PNG) or
+  **Print / PDF** (the browser's print dialog can save as PDF)
+- Feels like an app rather than a page: the page itself never scrolls or
+  bounces, double-tap zoom is off, and only the list scrolls
 - Built for phones: safe-area insets for notches, 38px tap targets, no
   focus-zoom on iOS, and a fallback for browsers without `<dialog>`
 

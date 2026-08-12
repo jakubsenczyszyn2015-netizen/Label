@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Label</title>
 <meta name="theme-color" content="#5C9BD1">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon.svg">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608121353">
+<link rel="stylesheet" href="styles.css?v=202608121407">
 </head>
 <body>
 
@@ -115,6 +115,20 @@
   </form>
 </dialog>
 
+<!-- Food detail: label preview and actions -->
+<dialog id="detail-dialog" class="dialog wide">
+  <h3 id="detail-title" class="dialog-title">Food</h3>
+  <img id="detail-label" class="label-preview" alt="Label preview">
+  <div class="detail-actions">
+    <button id="detail-edit" class="btn ghost small" type="button">Edit</button>
+    <button id="detail-png" class="btn ghost small" type="button">Save image</button>
+    <button id="detail-print" class="btn ghost small" type="button">Print / PDF</button>
+  </div>
+  <div class="dialog-actions">
+    <button class="btn ghost" type="button" data-close>Close</button>
+  </div>
+</dialog>
+
 <!-- Picture search -->
 <dialog id="search-dialog" class="dialog wide">
   <form id="search-form">
@@ -149,7 +163,7 @@
   </form>
 </dialog>
 
-<script src="js/config.js?v=202608121353"></script>
-<script type="module" src="js/app.js?v=202608121353"></script>
+<script src="js/config.js?v=202608121407"></script>
+<script type="module" src="js/app.js?v=202608121407"></script>
 </body>
 </html>

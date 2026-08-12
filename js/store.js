@@ -129,6 +129,23 @@ export async function addFood(food) {
   return row;
 }
 
+export async function updateFood(id, patch) {
+  const db = await getClient();
+
+  if (!db) {
+    const foods = readFoodsLocal();
+    const index = foods.findIndex((food) => food.id === id);
+    if (index === -1) throw new Error("That food no longer exists");
+    foods[index] = { ...foods[index], ...patch };
+    writeFoodsLocal(foods);
+    return foods[index];
+  }
+
+  const { error } = await db.from(FOOD_TABLE).update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
+  return { id, ...patch };
+}
+
 export async function deleteFood(id) {
   const db = await getClient();
 

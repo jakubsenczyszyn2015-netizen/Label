@@ -1,7 +1,8 @@
 import {
   listPeople, addPerson, deletePerson,
-  listFoods, addFood, deleteFood,
+  listFoods, addFood, updateFood, deleteFood,
 } from "./store.js";
+import { labelPng, printLabel } from "./label.js";
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
 
@@ -44,9 +45,15 @@ const foodExpires = document.getElementById("food-expires");
 const foodDescription = document.getElementById("food-description");
 const allergenList = document.getElementById("allergen-list");
 
+const detailDialog = document.getElementById("detail-dialog");
+const detailTitle = document.getElementById("detail-title");
+const detailLabel = document.getElementById("detail-label");
+
 let pendingDelete = null;
 let currentPerson = null;
 let pickedImage = "";
+let editingFood = null;
+let detailFood = null;
 
 // Older phone browsers lack <dialog>; fall back to plain show/hide + a scrim.
 const nativeDialog = typeof HTMLDialogElement !== "undefined" &&
@@ -266,6 +273,16 @@ function foodRow(food) {
   remove.setAttribute("aria-label", `Delete ${food.name}`);
   remove.addEventListener("click", () => askToDelete(food, "food"));
 
+  text.tabIndex = 0;
+  text.setAttribute("role", "button");
+  text.addEventListener("click", () => openFoodDetail(food));
+  text.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openFoodDetail(food);
+    }
+  });
+
   item.append(thumb, text, remove);
   return item;
 }
@@ -407,14 +424,66 @@ foodImageUrl.addEventListener("input", () => {
   else if (!foodFile.files.length) setPreview("");
 });
 
-document.getElementById("add-food").addEventListener("click", () => {
-  foodForm.reset();
-  setPreview("");
-  openModal(foodDialog);
-  foodName.focus();
+/* ---------- Food detail, editing and labels ---------- */
+
+async function openFoodDetail(food) {
+  detailFood = food;
+  detailTitle.textContent = food.name;
+  detailLabel.removeAttribute("src");
+  openModal(detailDialog);
+  detailLabel.src = await labelPng(food);
+}
+
+detailDialog.querySelector("[data-close]").addEventListener("click", () => {
+  closeModal(detailDialog);
 });
 
+document.getElementById("detail-print").addEventListener("click", () => {
+  if (detailFood) printLabel(detailFood);
+});
+
+document.getElementById("detail-png").addEventListener("click", async () => {
+  if (!detailFood) return;
+  const link = document.createElement("a");
+  link.href = await labelPng(detailFood);
+  link.download = `${detailFood.name.replace(/[^\w -]/g, "")|| "label"}.png`;
+  link.click();
+});
+
+document.getElementById("detail-edit").addEventListener("click", () => {
+  closeModal(detailDialog);
+  openFoodForm(detailFood);
+});
+
+function openFoodForm(food) {
+  editingFood = food || null;
+  foodForm.reset();
+
+  foodDialog.querySelector(".dialog-title").textContent =
+    food ? "Edit food" : "New food";
+  foodDialog.querySelector("button[type=submit]").textContent =
+    food ? "Save" : "Add";
+
+  setPreview(food?.image_url || "");
+  if (food) {
+    foodName.value = food.name;
+    foodImageUrl.value = food.image_url?.startsWith("data:") ? "" : food.image_url || "";
+    foodExpires.value = food.expires_on || "";
+    foodDescription.value = food.description || "";
+    const chosen = new Set(food.allergens || []);
+    for (const box of allergenList.querySelectorAll("input")) {
+      box.checked = chosen.has(box.value);
+    }
+  }
+
+  openModal(foodDialog);
+  foodName.focus();
+}
+
+document.getElementById("add-food").addEventListener("click", () => openFoodForm(null));
+
 foodDialog.querySelector("[data-close]").addEventListener("click", () => {
+  editingFood = null;
   closeModal(foodDialog);
 });
 
@@ -432,11 +501,19 @@ foodForm.addEventListener("submit", async (event) => {
     allergens: checkedAllergens(),
   };
 
+  const editing = editingFood;
+  editingFood = null;
   closeModal(foodDialog);
+
   try {
-    await addFood(food);
+    if (editing) {
+      const { person_id, ...patch } = food;
+      await updateFood(editing.id, patch);
+    } else {
+      await addFood(food);
+    }
   } catch (error) {
-    console.error("Could not add food:", error.message);
+    console.error("Could not save food:", error.message);
     foodEmpty.hidden = false;
     foodEmpty.textContent = `Could not save: ${error.message}`;
     return;
