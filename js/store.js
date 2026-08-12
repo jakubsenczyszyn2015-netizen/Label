@@ -82,22 +82,20 @@ function writeFoodsLocal(foods) {
   localStorage.setItem(FOOD_KEY, JSON.stringify(foods));
 }
 
-export async function listFoods(personId) {
-  // A null person_id means the food is shared, so it shows in every profile.
-  const mine = (food) => food.person_id === personId || food.person_id === null;
-
+// Every food is shared, so all profiles see the same list. person_id is kept
+// on the row only so food added before this change still loads.
+export async function listFoods() {
   const db = await getClient();
-  if (!db) return readFoodsLocal().filter(mine);
+  if (!db) return readFoodsLocal();
 
   const { data, error } = await db
     .from(FOOD_TABLE)
     .select("id, person_id, name, image_url, expires_on, description, allergens, created_at")
-    .or(`person_id.eq.${personId},person_id.is.null`)
     .order("expires_on", { ascending: true });
 
   if (error) {
     console.warn("Supabase read failed, using local copy:", error.message);
-    return readFoodsLocal().filter(mine);
+    return readFoodsLocal();
   }
   return data;
 }

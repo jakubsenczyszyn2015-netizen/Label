@@ -42,7 +42,6 @@ const foodImageUrl = document.getElementById("food-image-url");
 const foodPreview = document.getElementById("food-preview");
 const foodExpires = document.getElementById("food-expires");
 const foodDescription = document.getElementById("food-description");
-const foodShared = document.getElementById("food-shared");
 const allergenList = document.getElementById("allergen-list");
 
 let pendingDelete = null;
@@ -247,16 +246,9 @@ function foodRow(food) {
   }
 
   const allergens = food.allergens || [];
-  if (allergens.length || !food.person_id) {
+  if (allergens.length) {
     const tags = document.createElement("div");
     tags.className = "tags";
-
-    if (!food.person_id) {
-      const shared = document.createElement("span");
-      shared.className = "tag shared";
-      shared.textContent = "Everyone";
-      tags.append(shared);
-    }
 
     for (const allergen of allergens) {
       const tag = document.createElement("span");
@@ -280,7 +272,7 @@ function foodRow(food) {
 
 async function renderFoods() {
   if (!currentPerson) return;
-  const foods = await listFoods(currentPerson.id);
+  const foods = await listFoods();
   foodList.replaceChildren(...foods.map(foodRow));
   foodEmpty.textContent = "No food yet. Tap + to add some.";
   foodEmpty.hidden = foods.length > 0;
@@ -422,7 +414,7 @@ foodForm.addEventListener("submit", async (event) => {
   if (!name || !currentPerson) return;
 
   const food = {
-    person_id: foodShared.checked ? null : currentPerson.id,
+    person_id: null, // shared with every profile
     name,
     image_url: pickedImage || null,
     expires_on: foodExpires.value || null,
@@ -444,10 +436,9 @@ foodForm.addEventListener("submit", async (event) => {
 
 function askToDelete(record, kind) {
   pendingDelete = { record, kind };
-  const shared = kind === "food" && !record.person_id;
   deleteDialog.querySelector(".dialog-title").textContent =
     kind === "food" ? "Delete food" : "Delete person";
-  deleteNote.hidden = !shared;
+  deleteNote.hidden = kind !== "food";
   deleteTarget.textContent = record.name;
   deleteConfirm.value = "";
   deleteSubmit.disabled = true;

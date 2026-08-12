@@ -12,7 +12,7 @@
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon.svg">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608121344">
+<link rel="stylesheet" href="styles.css?v=202608121348">
 </head>
 <body>
 
@@ -97,11 +97,6 @@
       <input id="food-image-url" class="field" type="url" placeholder="…or paste an image link">
     </div>
 
-    <label class="allergen shared-toggle">
-      <input id="food-shared" type="checkbox">
-      <span>Add to everyone — shows in every profile</span>
-    </label>
-
     <label class="label" for="food-expires">Expiration date</label>
     <input id="food-expires" class="field" type="date" required>
 
@@ -141,7 +136,7 @@
   <form id="delete-form" method="dialog">
     <h3 class="dialog-title">Delete person</h3>
     <p id="delete-note" class="dialog-text warn" hidden>
-      This food is shared — it will be removed from every profile.
+      Food is shared, so this removes it from every profile.
     </p>
     <p class="dialog-text">
       This can't be undone. Type <strong id="delete-target"></strong> to confirm.
@@ -154,7 +149,7 @@
   </form>
 </dialog>
 
-<script src="js/config.js?v=202608121344"></script>
-<script type="module" src="js/app.js?v=202608121344"></script>
+<script src="js/config.js?v=202608121348"></script>
+<script type="module" src="js/app.js?v=202608121348"></script>
 </body>
 </html>
