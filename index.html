@@ -10,9 +10,10 @@
 <meta name="apple-mobile-web-app-title" content="Label">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="assets/icon.svg">
+<!-- iOS only accepts a PNG here; an SVG silently yields a blank home screen icon. -->
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608121407">
+<link rel="stylesheet" href="styles.css?v=202608121727">
 </head>
 <body>
 
@@ -119,6 +120,7 @@
 <dialog id="detail-dialog" class="dialog wide">
   <h3 id="detail-title" class="dialog-title">Food</h3>
   <img id="detail-label" class="label-preview" alt="Label preview">
+  <p id="detail-status" class="empty" hidden></p>
   <div class="detail-actions">
     <button id="detail-edit" class="btn ghost small" type="button">Edit</button>
     <button id="detail-png" class="btn ghost small" type="button">Save image</button>
@@ -163,7 +165,12 @@
   </form>
 </dialog>
 
-<script src="js/config.js?v=202608121407"></script>
-<script type="module" src="js/app.js?v=202608121407"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+  }
+</script>
+<script src="js/config.js?v=202608121727"></script>
+<script type="module" src="js/app.js?v=202608121727"></script>
 </body>
 </html>

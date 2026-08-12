@@ -141,33 +141,105 @@ export async function drawLabel(food) {
   return label;
 }
 
-export async function labelPng(food) {
+async function safeCanvas(food) {
   const canvas = await drawLabel(food);
   try {
-    return canvas.toDataURL("image/png");
+    canvas.getContext("2d").getImageData(0, 0, 1, 1);
+    return canvas;
   } catch {
     // A remote picture without CORS headers taints the canvas; retry without it.
-    const plain = await drawLabel({ ...food, image_url: null });
-    return plain.toDataURL("image/png");
+    return drawLabel({ ...food, image_url: null });
   }
 }
 
-// Printing goes through a hidden iframe so no popup blocker gets involved.
+export async function labelPng(food) {
+  return (await safeCanvas(food)).toDataURL("image/png");
+}
+
+function canvasBlob(canvas) {
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+export function fileName(food) {
+  const stem = food.name.replace(/[^\w -]/g, "").trim();
+  return `${stem || "label"}.png`;
+}
+
+// Saving is layered, because a plain download link is blocked in an installed
+// PWA and on iOS: share sheet first, then download, then open in a tab.
+export async function saveLabel(food) {
+  const blob = await canvasBlob(await safeCanvas(food));
+  const name = fileName(food);
+  const file = new File([blob], name, { type: "image/png" });
+
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: food.name });
+      return "shared";
+    } catch (error) {
+      if (error.name === "AbortError") return "cancelled";
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  if ("download" in link) {
+    link.href = url;
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    return "downloaded";
+  }
+
+  const tab = window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return tab ? "opened" : "blocked";
+}
+
+function printMarkup(food, src) {
+  const title = food.name.replace(/[<&>]/g, "");
+  return `<!doctype html><html><head><meta charset="utf-8">
+    <title>${title}</title>
+    <style>
+      @page { size: auto; margin: 12mm; }
+      html, body { margin: 0; height: 100%; }
+      body { display: flex; align-items: center; justify-content: center; }
+      img { width: 100%; max-width: 170mm; }
+      @media screen { body { background: #f6f7f9; padding: 16px; } }
+    </style></head>
+    <body><img src="${src}" alt="${title}"></body></html>`;
+}
+
+// An installed PWA has no print UI of its own and iOS ignores iframe printing,
+// so open a real tab when we can and fall back to the iframe.
 export async function printLabel(food) {
   const png = await labelPng(food);
+  const standalone = window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+
+  if (standalone) {
+    const tab = window.open("", "_blank");
+    if (tab) {
+      tab.document.write(printMarkup(food, png));
+      tab.document.close();
+      // The image is a data URL, so it is ready almost immediately.
+      tab.addEventListener("load", () => tab.print());
+      setTimeout(() => tab.print(), 700);
+      return "tab";
+    }
+    // No tab available (iOS standalone): share the image so the system print
+    // and save options are reachable from the share sheet.
+    const shared = await saveLabel(food);
+    if (shared === "shared" || shared === "cancelled") return shared;
+  }
+
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
   frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
-  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8">
-    <title>${food.name.replace(/[<&]/g, "")} label</title>
-    <style>
-      @page { size: auto; margin: 12mm; }
-      body { margin: 0; display: flex; align-items: center; justify-content: center; }
-      img { width: 100%; max-width: 170mm; }
-    </style></head>
-    <body><img src="${png}"></body></html>`;
-
   document.body.append(frame);
+
   frame.addEventListener("load", () => {
     const view = frame.contentWindow;
     view.focus();
@@ -175,4 +247,7 @@ export async function printLabel(food) {
     // Safari needs the frame to outlive the print dialog.
     setTimeout(() => frame.remove(), 60000);
   });
+
+  frame.srcdoc = printMarkup(food, png);
+  return "iframe";
 }

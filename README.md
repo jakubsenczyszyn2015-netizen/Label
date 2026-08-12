@@ -22,6 +22,8 @@ A minimal label-printing app, built as a static site for GitHub Pages.
   **Print / PDF** (the browser's print dialog can save as PDF)
 - Feels like an app rather than a page: the page itself never scrolls or
   bounces, double-tap zoom is off, and only the list scrolls
+- Installable: add it to your home screen and it opens standalone, with a
+  service worker caching the shell so it still opens offline
 - Built for phones: safe-area insets for notches, 38px tap targets, no
   focus-zoom on iOS, and a fallback for browsers without `<dialog>`
 

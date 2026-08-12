@@ -2,7 +2,7 @@ import {
   listPeople, addPerson, deletePerson,
   listFoods, addFood, updateFood, deleteFood,
 } from "./store.js";
-import { labelPng, printLabel } from "./label.js";
+import { labelPng, printLabel, saveLabel } from "./label.js";
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
 
@@ -430,6 +430,7 @@ async function openFoodDetail(food) {
   detailFood = food;
   detailTitle.textContent = food.name;
   detailLabel.removeAttribute("src");
+  say("");
   openModal(detailDialog);
   detailLabel.src = await labelPng(food);
 }
@@ -438,16 +439,39 @@ detailDialog.querySelector("[data-close]").addEventListener("click", () => {
   closeModal(detailDialog);
 });
 
-document.getElementById("detail-print").addEventListener("click", () => {
-  if (detailFood) printLabel(detailFood);
+const detailStatus = document.getElementById("detail-status");
+
+function say(message) {
+  detailStatus.textContent = message;
+  detailStatus.hidden = !message;
+}
+
+document.getElementById("detail-print").addEventListener("click", async () => {
+  if (!detailFood) return;
+  say("Opening print…");
+  try {
+    const how = await printLabel(detailFood);
+    say(how === "blocked" ? "Your browser blocked the print window." : "");
+  } catch (error) {
+    say(`Could not print: ${error.message}`);
+  }
 });
 
 document.getElementById("detail-png").addEventListener("click", async () => {
   if (!detailFood) return;
-  const link = document.createElement("a");
-  link.href = await labelPng(detailFood);
-  link.download = `${detailFood.name.replace(/[^\w -]/g, "")|| "label"}.png`;
-  link.click();
+  say("Saving…");
+  try {
+    const how = await saveLabel(detailFood);
+    say({
+      shared: "",
+      cancelled: "",
+      downloaded: "Saved to your downloads.",
+      opened: "Opened in a new tab — press and hold to save it.",
+      blocked: "Your browser blocked the download. Press and hold the label above to save it.",
+    }[how] ?? "");
+  } catch (error) {
+    say(`Could not save: ${error.message}`);
+  }
 });
 
 document.getElementById("detail-edit").addEventListener("click", () => {
