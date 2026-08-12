@@ -26,6 +26,7 @@ const deleteForm = document.getElementById("delete-form");
 const deleteTarget = document.getElementById("delete-target");
 const deleteConfirm = document.getElementById("delete-confirm");
 const deleteSubmit = document.getElementById("delete-submit");
+const deleteNote = document.getElementById("delete-note");
 
 const peopleView = document.getElementById("people-view");
 const foodView = document.getElementById("food-view");
@@ -41,6 +42,7 @@ const foodImageUrl = document.getElementById("food-image-url");
 const foodPreview = document.getElementById("food-preview");
 const foodExpires = document.getElementById("food-expires");
 const foodDescription = document.getElementById("food-description");
+const foodShared = document.getElementById("food-shared");
 const allergenList = document.getElementById("allergen-list");
 
 let pendingDelete = null;
@@ -245,9 +247,17 @@ function foodRow(food) {
   }
 
   const allergens = food.allergens || [];
-  if (allergens.length) {
+  if (allergens.length || !food.person_id) {
     const tags = document.createElement("div");
     tags.className = "tags";
+
+    if (!food.person_id) {
+      const shared = document.createElement("span");
+      shared.className = "tag shared";
+      shared.textContent = "Everyone";
+      tags.append(shared);
+    }
+
     for (const allergen of allergens) {
       const tag = document.createElement("span");
       tag.className = "tag";
@@ -412,7 +422,7 @@ foodForm.addEventListener("submit", async (event) => {
   if (!name || !currentPerson) return;
 
   const food = {
-    person_id: currentPerson.id,
+    person_id: foodShared.checked ? null : currentPerson.id,
     name,
     image_url: pickedImage || null,
     expires_on: foodExpires.value || null,
@@ -434,8 +444,10 @@ foodForm.addEventListener("submit", async (event) => {
 
 function askToDelete(record, kind) {
   pendingDelete = { record, kind };
+  const shared = kind === "food" && !record.person_id;
   deleteDialog.querySelector(".dialog-title").textContent =
     kind === "food" ? "Delete food" : "Delete person";
+  deleteNote.hidden = !shared;
   deleteTarget.textContent = record.name;
   deleteConfirm.value = "";
   deleteSubmit.disabled = true;

@@ -14,6 +14,8 @@ A minimal label-printing app, built as a static site for GitHub Pages.
 - Pictures come from an upload, a pasted link, or the built-in search — type a
   name and tap a result. Search covers Open Food Facts (branded products) and
   Wikimedia Commons; both are free and need no API key
+- Ticking **Add to everyone** makes one shared food that appears in every
+  profile, tagged `Everyone`; deleting it removes it everywhere
 - A light/dark toggle sits in the top right of both screens; the choice is saved
   per device, never synced
 - Built for phones: safe-area insets for notches, 38px tap targets, no
@@ -56,7 +58,8 @@ the app read and write with the anon key:
 ```sql
 create table foods (
   id uuid primary key default gen_random_uuid(),
-  person_id uuid not null references people (id) on delete cascade,
+  -- nullable: a null person_id is a shared food, shown in every profile
+  person_id uuid references people (id) on delete cascade,
   name text not null,
   image_url text,
   expires_on date,

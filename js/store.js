@@ -83,20 +83,21 @@ function writeFoodsLocal(foods) {
 }
 
 export async function listFoods(personId) {
+  // A null person_id means the food is shared, so it shows in every profile.
+  const mine = (food) => food.person_id === personId || food.person_id === null;
+
   const db = await getClient();
-  if (!db) {
-    return readFoodsLocal().filter((food) => food.person_id === personId);
-  }
+  if (!db) return readFoodsLocal().filter(mine);
 
   const { data, error } = await db
     .from(FOOD_TABLE)
     .select("id, person_id, name, image_url, expires_on, description, allergens, created_at")
-    .eq("person_id", personId)
+    .or(`person_id.eq.${personId},person_id.is.null`)
     .order("expires_on", { ascending: true });
 
   if (error) {
     console.warn("Supabase read failed, using local copy:", error.message);
-    return readFoodsLocal().filter((food) => food.person_id === personId);
+    return readFoodsLocal().filter(mine);
   }
   return data;
 }

@@ -509,6 +509,15 @@ body {
   color: var(--muted);
 }
 
+.dialog-text.warn { color: var(--danger); }
+
+.shared-toggle { width: 100%; }
+
+.tag.shared {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
 .dialog-text strong {
   color: var(--text);
   overflow-wrap: anywhere;

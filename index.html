@@ -97,6 +97,11 @@
       <input id="food-image-url" class="field" type="url" placeholder="…or paste an image link">
     </div>
 
+    <label class="allergen shared-toggle">
+      <input id="food-shared" type="checkbox">
+      <span>Add to everyone — shows in every profile</span>
+    </label>
+
     <label class="label" for="food-expires">Expiration date</label>
     <input id="food-expires" class="field" type="date" required>
 
@@ -135,6 +140,9 @@
 <dialog id="delete-dialog" class="dialog">
   <form id="delete-form" method="dialog">
     <h3 class="dialog-title">Delete person</h3>
+    <p id="delete-note" class="dialog-text warn" hidden>
+      This food is shared — it will be removed from every profile.
+    </p>
     <p class="dialog-text">
       This can't be undone. Type <strong id="delete-target"></strong> to confirm.
     </p>
