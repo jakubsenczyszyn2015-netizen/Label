@@ -7,6 +7,8 @@
   --muted: #8a9199;
   --blue: #5c9bd1;
   --blue-soft: #eaf2fa;
+  --danger: #cf5c5c;
+  --danger-soft: #fbecec;
   --radius: 16px;
 }
 
@@ -19,6 +21,7 @@
   --text: #eef1f4;
   --muted: #8d959d;
   --blue-soft: #1e2933;
+  --danger-soft: #332323;
 }
 
 * { box-sizing: border-box; }
@@ -108,6 +111,13 @@ body {
 
 .btn:hover { filter: brightness(1.05); }
 .btn.ghost { background: transparent; color: var(--muted); }
+.btn.danger { background: var(--danger); }
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
 
 /* ---------- App ---------- */
 .app {
@@ -197,8 +207,29 @@ body {
   font-weight: 600;
 }
 
+.person-text { flex: 1; min-width: 0; }
 .person-name { font-size: 15px; }
 .person-note { font-size: 13px; color: var(--muted); }
+
+.remove {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.remove:hover,
+.remove:focus-visible {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 
 .empty {
   margin: 0;
@@ -231,6 +262,14 @@ body {
   font-size: 16px;
   font-weight: 600;
 }
+
+.dialog-text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.dialog-text strong { color: var(--text); }
 
 .dialog-actions {
   display: flex;

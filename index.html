@@ -50,6 +50,21 @@
   </form>
 </dialog>
 
+<!-- Delete confirmation -->
+<dialog id="delete-dialog" class="dialog">
+  <form id="delete-form" method="dialog">
+    <h3 class="dialog-title">Delete person</h3>
+    <p class="dialog-text">
+      This can't be undone. Type <strong id="delete-target"></strong> to confirm.
+    </p>
+    <input id="delete-confirm" class="field" type="text" placeholder="Name" autocomplete="off" required>
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" data-close>Cancel</button>
+      <button id="delete-submit" class="btn danger" type="submit" disabled>Delete</button>
+    </div>
+  </form>
+</dialog>
+
 <script src="js/config.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>

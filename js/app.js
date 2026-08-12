@@ -1,4 +1,4 @@
-import { listPeople, addPerson } from "./store.js";
+import { listPeople, addPerson, deletePerson } from "./store.js";
 
 const cfg = window.LABEL_CONFIG || {};
 
@@ -15,6 +15,14 @@ const dialog = document.getElementById("person-dialog");
 const personForm = document.getElementById("person-form");
 const nameInput = document.getElementById("person-name");
 const noteInput = document.getElementById("person-note");
+
+const deleteDialog = document.getElementById("delete-dialog");
+const deleteForm = document.getElementById("delete-form");
+const deleteTarget = document.getElementById("delete-target");
+const deleteConfirm = document.getElementById("delete-confirm");
+const deleteSubmit = document.getElementById("delete-submit");
+
+let pendingDelete = null;
 
 // Theme: white by default; a settings screen can flip this later.
 const theme = localStorage.getItem("label.theme");
@@ -57,6 +65,7 @@ function personRow(person) {
   avatar.textContent = initials(person.name);
 
   const text = document.createElement("div");
+  text.className = "person-text";
   const name = document.createElement("div");
   name.className = "person-name";
   name.textContent = person.name;
@@ -69,9 +78,55 @@ function personRow(person) {
     text.append(note);
   }
 
-  item.append(avatar, text);
+  const remove = document.createElement("button");
+  remove.className = "remove";
+  remove.type = "button";
+  remove.textContent = "×";
+  remove.setAttribute("aria-label", `Delete ${person.name}`);
+  remove.addEventListener("click", () => askToDelete(person));
+
+  item.append(avatar, text, remove);
   return item;
 }
+
+function askToDelete(person) {
+  pendingDelete = person;
+  deleteTarget.textContent = person.name;
+  deleteConfirm.value = "";
+  deleteSubmit.disabled = true;
+  deleteDialog.showModal();
+  deleteConfirm.focus();
+}
+
+// The typed name must match exactly before Delete becomes available.
+deleteConfirm.addEventListener("input", () => {
+  deleteSubmit.disabled =
+    !pendingDelete || deleteConfirm.value.trim() !== pendingDelete.name;
+});
+
+deleteDialog.querySelector("[data-close]").addEventListener("click", () => {
+  pendingDelete = null;
+  deleteDialog.close();
+});
+
+deleteForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const person = pendingDelete;
+  if (!person || deleteConfirm.value.trim() !== person.name) return;
+
+  pendingDelete = null;
+  deleteDialog.close();
+
+  try {
+    await deletePerson(person.id);
+  } catch (error) {
+    console.error("Could not delete person:", error.message);
+    empty.hidden = false;
+    empty.textContent = "Could not delete. Check your connection and try again.";
+    return;
+  }
+  render();
+});
 
 async function render() {
   const people = await listPeople();

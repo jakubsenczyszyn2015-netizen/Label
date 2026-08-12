@@ -67,3 +67,15 @@ export async function addPerson({ name, note }) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+export async function deletePerson(id) {
+  const db = await getClient();
+
+  if (!db) {
+    writeLocal(readLocal().filter((person) => person.id !== id));
+    return;
+  }
+
+  const { error } = await db.from(TABLE).delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

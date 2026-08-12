@@ -6,7 +6,8 @@ A minimal label-printing app, built as a static site for GitHub Pages.
 
 - Password screen (`***`) that opens into the app
 - A **People** menu: centered title, a short rule below it that stops before the edges, and a soft light-gray panel holding white profile rows
-- A `+` in the top-right to add a person
+- A `+` in the top-right to add a person, and a `×` on each row to remove one —
+  deleting requires typing the person's name exactly before the button unlocks
 - Light theme by default; dark mode is wired up via `data-theme="dark"` on `<html>` and ready for a settings screen
 
 ## Running locally
