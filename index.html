@@ -29,15 +29,41 @@
 
 <!-- Main app -->
 <main id="app" class="app" hidden>
-  <header class="topbar">
-    <h2 class="title">People</h2>
-    <button id="add-person" class="plus" type="button" aria-label="Add person">+</button>
-  </header>
-  <div class="divider"></div>
 
-  <section class="panel">
-    <ul id="people" class="people"></ul>
-    <p id="empty" class="empty">No people yet. Tap + to add one.</p>
+  <!-- People view -->
+  <section id="people-view">
+    <header class="topbar">
+      <h2 class="title">People</h2>
+      <div class="actions">
+        <button id="add-person" class="plus" type="button" aria-label="Add person">+</button>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">☾</button>
+      </div>
+    </header>
+    <div class="divider"></div>
+
+    <div class="panel">
+      <ul id="people" class="people"></ul>
+      <p id="empty" class="empty">No people yet. Tap + to add one.</p>
+    </div>
+  </section>
+
+  <!-- Food view for one person -->
+  <section id="food-view" hidden>
+    <header class="topbar">
+      <button id="back" class="back" type="button" aria-label="Back to people">‹</button>
+      <h2 class="title">Food</h2>
+      <div class="actions">
+        <button id="add-food" class="plus" type="button" aria-label="Add food">+</button>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">☾</button>
+      </div>
+    </header>
+    <p id="food-owner" class="subtitle"></p>
+    <div class="divider"></div>
+
+    <div class="panel">
+      <ul id="foods" class="people"></ul>
+      <p id="food-empty" class="empty">No food yet. Tap + to add some.</p>
+    </div>
   </section>
 </main>
 
@@ -47,6 +73,41 @@
     <h3 class="dialog-title">New person</h3>
     <input id="person-name" class="field" type="text" placeholder="Name" maxlength="60" required>
     <input id="person-note" class="field" type="text" placeholder="Note (optional)" maxlength="80">
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" data-close>Cancel</button>
+      <button class="btn" type="submit">Add</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Add food dialog -->
+<dialog id="food-dialog" class="dialog wide">
+  <form id="food-form" method="dialog">
+    <h3 class="dialog-title">New food</h3>
+
+    <input id="food-name" class="field" type="text" placeholder="Food name" maxlength="80" required>
+
+    <div class="picture">
+      <img id="food-preview" class="preview" alt="" hidden>
+      <div class="picture-actions">
+        <button id="upload-btn" class="btn ghost small" type="button">Upload picture</button>
+        <button id="search-btn" class="btn ghost small" type="button">Search the web</button>
+      </div>
+      <input id="food-file" type="file" accept="image/*" hidden>
+      <input id="food-image-url" class="field" type="url" placeholder="…or paste an image link">
+    </div>
+
+    <label class="label" for="food-expires">Expiration date</label>
+    <input id="food-expires" class="field" type="date" required>
+
+    <textarea id="food-description" class="field" rows="2" maxlength="300"
+              placeholder="Description (optional)"></textarea>
+
+    <fieldset class="allergens">
+      <legend class="label">Allergens</legend>
+      <div id="allergen-list" class="allergen-list"></div>
+    </fieldset>
+
     <div class="dialog-actions">
       <button class="btn ghost" type="button" data-close>Cancel</button>
       <button class="btn" type="submit">Add</button>

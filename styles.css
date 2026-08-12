@@ -153,11 +153,55 @@ body {
   letter-spacing: 0.01em;
 }
 
-.plus {
+.actions {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.back {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--blue);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.theme-toggle {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+
+.theme-toggle:hover { background: var(--surface); }
+
+.plus {
   width: 38px;
   height: 38px;
   border: 0;
@@ -251,6 +295,120 @@ body {
   color: var(--danger);
 }
 
+/* ---------- Food ---------- */
+.food { align-items: flex-start; }
+
+.person-text[role="button"] { cursor: pointer; }
+
+.thumb {
+  overflow: hidden;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.expired { color: var(--danger); }
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Food form ---------- */
+.dialog.wide { width: min(94vw, 400px); }
+
+.label {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 0;
+}
+
+.picture {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.picture-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.picture-actions .btn { flex: 1; }
+
+.btn.small {
+  padding: 9px 10px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+}
+
+.preview {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.allergens {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.allergen-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 6px;
+}
+
+.allergen {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Fallback for browsers without :has() — the label text still marks itself. */
+.allergen input:checked + span { color: var(--blue); font-weight: 600; }
+
+.allergen:has(input:checked) {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.allergen input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--blue);
+  margin: 0;
+}
+
 .empty {
   margin: 0;
   padding: 26px 10px;
@@ -298,6 +456,8 @@ body {
   flex-direction: column;
   gap: 10px;
 }
+
+.dialog textarea.field { resize: vertical; }
 
 .dialog-title {
   margin: 0 0 2px;

@@ -8,7 +8,12 @@ A minimal label-printing app, built as a static site for GitHub Pages.
 - A **People** menu: centered title, a short rule below it that stops before the edges, and a soft light-gray panel holding white profile rows
 - A `+` in the top-right to add a person, and a `×` on each row to remove one —
   deleting requires typing the person's name exactly before the button unlocks
-- Light theme by default; dark mode is wired up via `data-theme="dark"` on `<html>` and ready for a settings screen
+- Tap a person to open their **Food** list — same header, line and `+`
+- Adding food takes a name, a picture (upload or paste a link, with a button
+  that opens a web image search), an expiration date, an optional description,
+  and tick boxes for all 14 declarable allergens
+- A light/dark toggle sits in the top right of both screens; the choice is saved
+  per device, never synced
 - Built for phones: safe-area insets for notches, 38px tap targets, no
   focus-zoom on iOS, and a fallback for browsers without `<dialog>`
 
@@ -47,11 +52,31 @@ Then enable row-level security and add policies. The quickest setup that lets
 the app read and write with the anon key:
 
 ```sql
+create table foods (
+  id uuid primary key default gen_random_uuid(),
+  person_id uuid not null references people (id) on delete cascade,
+  name text not null,
+  image_url text,
+  expires_on date,
+  description text,
+  allergens jsonb not null default '[]',
+  created_at timestamptz not null default now()
+);
+
 alter table people enable row level security;
+alter table foods enable row level security;
 
 create policy "anon can read" on people for select to anon using (true);
 create policy "anon can insert" on people for insert to anon with check (true);
+create policy "anon can delete" on people for delete to anon using (true);
+
+create policy "anon can read food" on foods for select to anon using (true);
+create policy "anon can add food" on foods for insert to anon with check (true);
+create policy "anon can delete food" on foods for delete to anon using (true);
 ```
+
+Uploaded pictures are shrunk to 640px JPEGs and stored inline in `image_url`
+as data URLs, so no storage bucket is needed.
 
 Be aware of what that means: the anon key and the password both ship to the
 browser, so anyone who opens the page source can read and add rows through the
