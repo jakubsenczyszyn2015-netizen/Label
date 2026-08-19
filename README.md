@@ -18,8 +18,14 @@ A minimal label-printing app, built as a static site for GitHub Pages.
   deleting a food removes it everywhere
 - A light/dark toggle sits in the top right of both screens; the choice is saved
   per device, never synced
-- Tap a food to preview its label, then **Edit** it, **Save image** (PNG) or
-  **Print / PDF** (the browser's print dialog can save as PDF)
+- Tap a food to preview its label, then **Send to label app** (share sheet —
+  Brother iPrint&Label, P-touch Design&Print, Dymo, AirPrint), **Print**,
+  **Save PNG**, **Save PDF** or **Edit**
+- PDFs are generated in the app (`js/pdf.js` embeds the label as a JPEG in a
+  one-page PDF), so saving one never depends on the print dialog
+- Unlocking is remembered on the device until you press the lock button
+- If Supabase is paused or unreachable, a maintenance notice explains it
+  instead of showing a raw database error
 - Feels like an app rather than a page: the page itself never scrolls or
   bounces, double-tap zoom is off, and only the list scrolls
 - Installable: add it to your home screen and it opens standalone, with a

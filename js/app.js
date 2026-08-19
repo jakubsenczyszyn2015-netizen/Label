@@ -2,7 +2,7 @@ import {
   listPeople, addPerson, deletePerson,
   listFoods, addFood, updateFood, deleteFood,
 } from "./store.js";
-import { labelPng, printLabel, saveLabel } from "./label.js";
+import { labelPng, printLabel, saveLabel, shareLabel } from "./label.js";
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
 
@@ -93,6 +93,69 @@ if (!nativeDialog) {
   });
 }
 
+/* ---------- Dialog safety net ---------- */
+
+// Every dialog closes from its own [data-close], from Escape, and from a tap
+// on the backdrop — so no action can leave you stranded on a screen.
+document.addEventListener("click", (event) => {
+  const closer = event.target.closest?.("[data-close]");
+  if (closer) {
+    const owner = closer.closest("dialog");
+    if (owner) {
+      pendingDelete = null;
+      editingFood = null;
+      closeModal(owner);
+    }
+    return;
+  }
+  // A click landing on the dialog element itself is a click on its backdrop.
+  if (event.target.tagName === "DIALOG" && event.target.open) {
+    closeModal(event.target);
+  }
+});
+
+for (const node of document.querySelectorAll("dialog")) {
+  node.addEventListener("close", () => {
+    if (node === deleteDialog) pendingDelete = null;
+    if (node === foodDialog) editingFood = null;
+  });
+  // Escape fires "cancel" before "close"; let it through but reset state.
+  node.addEventListener("cancel", () => {
+    if (node === deleteDialog) pendingDelete = null;
+    if (node === foodDialog) editingFood = null;
+  });
+}
+
+/* ---------- Maintenance ---------- */
+
+const maintenance = document.getElementById("maintenance");
+
+// A paused or sleeping Supabase project fails in a handful of recognisable
+// ways; say so plainly instead of showing a raw database error.
+function maintenanceNotice(error) {
+  const message = String(error?.message || error);
+  const offline = /failed to fetch|networkerror|load failed/i.test(message);
+  const paused = /paused|503|502|upstream|unavailable|not found/i.test(message);
+
+  if (paused) {
+    return "Label is in maintenance — the database is paused and needs " +
+      "reactivating in Supabase. Your saved data is safe.";
+  }
+  if (offline) {
+    return navigator.onLine
+      ? "Can't reach the database right now. It may be paused or restarting."
+      : "You're offline. Label will catch up when you reconnect.";
+  }
+  return "";
+}
+
+function showMaintenance(error) {
+  const notice = maintenanceNotice(error);
+  maintenance.textContent = notice;
+  maintenance.hidden = !notice;
+  return notice;
+}
+
 // Theme is per-device: it lives in this browser's storage, never in Supabase.
 function applyTheme(mode) {
   document.documentElement.dataset.theme = mode;
@@ -111,6 +174,20 @@ for (const button of document.querySelectorAll("[data-theme-toggle]")) {
   });
 }
 
+const UNLOCKED = "label.unlocked";
+
+// Unlocking sticks to the device until the lock button is used.
+if (localStorage.getItem(UNLOCKED) === "yes") {
+  queueMicrotask(unlock);
+}
+
+for (const button of document.querySelectorAll("[data-lock]")) {
+  button.addEventListener("click", () => {
+    localStorage.removeItem(UNLOCKED);
+    location.reload();
+  });
+}
+
 lockForm.addEventListener("submit", (event) => {
   event.preventDefault();
   if (passwordInput.value !== cfg.PASSWORD) {
@@ -121,6 +198,7 @@ lockForm.addEventListener("submit", (event) => {
   }
   lockError.hidden = true;
   passwordInput.value = "";
+  localStorage.setItem(UNLOCKED, "yes");
   unlock();
 });
 
@@ -207,6 +285,15 @@ function formatDate(value) {
   });
 }
 
+// Green when fine, amber within three days, red once past.
+function expiryState(value) {
+  if (!value) return "";
+  if (isExpired(value)) return "expired";
+  const soon = new Date();
+  soon.setDate(soon.getDate() + 3);
+  return value <= soon.toISOString().slice(0, 10) ? "soon" : "";
+}
+
 function isExpired(value) {
   if (!value) return false;
   const today = new Date().toISOString().slice(0, 10);
@@ -238,11 +325,10 @@ function foodRow(food) {
   text.append(name);
 
   const expiry = document.createElement("div");
-  expiry.className = "person-note";
+  expiry.className = `meta ${expiryState(food.expires_on)}`;
   expiry.textContent = isExpired(food.expires_on)
     ? `Expired ${formatDate(food.expires_on)}`
     : `Best before ${formatDate(food.expires_on)}`;
-  if (isExpired(food.expires_on)) expiry.classList.add("expired");
   text.append(expiry);
 
   if (food.description) {
@@ -296,9 +382,12 @@ async function renderFoods() {
   } catch (error) {
     foodList.replaceChildren();
     foodEmpty.hidden = false;
-    foodEmpty.textContent = `Could not load food: ${error.message}`;
+    foodEmpty.textContent = showMaintenance(error)
+      ? "Nothing to show while the database is unavailable."
+      : `Could not load food: ${error.message}`;
     return;
   }
+  maintenance.hidden = true;
 
   foodList.replaceChildren(...foods.map(foodRow));
   foodEmpty.textContent = "No food yet. Tap + to add some.";
@@ -446,33 +535,37 @@ function say(message) {
   detailStatus.hidden = !message;
 }
 
-document.getElementById("detail-print").addEventListener("click", async () => {
-  if (!detailFood) return;
-  say("Opening print…");
-  try {
-    const how = await printLabel(detailFood);
-    say(how === "blocked" ? "Your browser blocked the print window." : "");
-  } catch (error) {
-    say(`Could not print: ${error.message}`);
-  }
-});
+const OUTCOME = {
+  shared: "",
+  cancelled: "",
+  saved: "Saved to your downloads.",
+  opened: "Opened in a new tab — press and hold to save it.",
+  blocked: "Your browser blocked the download. Press and hold the label above to save it.",
+  printing: "",
+};
 
-document.getElementById("detail-png").addEventListener("click", async () => {
+async function runAction(label, work) {
   if (!detailFood) return;
-  say("Saving…");
+  say(`${label}…`);
   try {
-    const how = await saveLabel(detailFood);
-    say({
-      shared: "",
-      cancelled: "",
-      downloaded: "Saved to your downloads.",
-      opened: "Opened in a new tab — press and hold to save it.",
-      blocked: "Your browser blocked the download. Press and hold the label above to save it.",
-    }[how] ?? "");
+    say(OUTCOME[await work()] ?? "");
   } catch (error) {
-    say(`Could not save: ${error.message}`);
+    say(`${label} failed: ${error.message}`);
   }
-});
+}
+
+// The share sheet is where Brother iPrint&Label, P-touch and AirPrint appear.
+document.getElementById("detail-share").addEventListener("click", () =>
+  runAction("Opening share sheet", () => shareLabel(detailFood, "png")));
+
+document.getElementById("detail-print").addEventListener("click", () =>
+  runAction("Printing", () => printLabel(detailFood)));
+
+document.getElementById("detail-png").addEventListener("click", () =>
+  runAction("Saving PNG", () => saveLabel(detailFood, "png")));
+
+document.getElementById("detail-pdf").addEventListener("click", () =>
+  runAction("Saving PDF", () => saveLabel(detailFood, "pdf")));
 
 document.getElementById("detail-edit").addEventListener("click", () => {
   closeModal(detailDialog);
@@ -599,9 +692,12 @@ async function render() {
   } catch (error) {
     list.replaceChildren();
     empty.hidden = false;
-    empty.textContent = `Could not load people: ${error.message}`;
+    empty.textContent = showMaintenance(error)
+      ? "Nothing to show while the database is unavailable."
+      : `Could not load people: ${error.message}`;
     return;
   }
+  maintenance.hidden = true;
 
   list.replaceChildren(...people.map(personRow));
   empty.textContent = "No people yet. Tap + to add one.";

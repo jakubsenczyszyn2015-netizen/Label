@@ -13,7 +13,7 @@
 <!-- iOS only accepts a PNG here; an SVG silently yields a blank home screen icon. -->
 <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608121727">
+<link rel="stylesheet" href="styles.css?v=202608191147">
 </head>
 <body>
 
@@ -30,6 +30,7 @@
 
 <!-- Main app -->
 <main id="app" class="app" hidden>
+  <p id="maintenance" class="banner" hidden></p>
 
   <!-- People view -->
   <section id="people-view">
@@ -38,6 +39,7 @@
       <div class="actions">
         <button id="add-person" class="plus" type="button" aria-label="Add person">+</button>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">☾</button>
+        <button class="theme-toggle" type="button" data-lock aria-label="Lock app" title="Lock">⎋</button>
       </div>
     </header>
     <div class="divider"></div>
@@ -118,16 +120,20 @@
 
 <!-- Food detail: label preview and actions -->
 <dialog id="detail-dialog" class="dialog wide">
-  <h3 id="detail-title" class="dialog-title">Food</h3>
+  <header class="dialog-head">
+    <h3 id="detail-title" class="dialog-title">Food</h3>
+    <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+  </header>
+
   <img id="detail-label" class="label-preview" alt="Label preview">
-  <p id="detail-status" class="empty" hidden></p>
-  <div class="detail-actions">
+  <p id="detail-status" class="hint" hidden></p>
+
+  <div class="action-grid">
+    <button id="detail-share" class="btn" type="button">Send to label app</button>
+    <button id="detail-print" class="btn ghost small" type="button">Print</button>
+    <button id="detail-png" class="btn ghost small" type="button">Save PNG</button>
+    <button id="detail-pdf" class="btn ghost small" type="button">Save PDF</button>
     <button id="detail-edit" class="btn ghost small" type="button">Edit</button>
-    <button id="detail-png" class="btn ghost small" type="button">Save image</button>
-    <button id="detail-print" class="btn ghost small" type="button">Print / PDF</button>
-  </div>
-  <div class="dialog-actions">
-    <button class="btn ghost" type="button" data-close>Close</button>
   </div>
 </dialog>
 
@@ -170,7 +176,7 @@
     addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
   }
 </script>
-<script src="js/config.js?v=202608121727"></script>
-<script type="module" src="js/app.js?v=202608121727"></script>
+<script src="js/config.js?v=202608191147"></script>
+<script type="module" src="js/app.js?v=202608191147"></script>
 </body>
 </html>
