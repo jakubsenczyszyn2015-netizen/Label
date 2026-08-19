@@ -179,25 +179,41 @@ async function labelFile(food, kind) {
     return new File([blob], labelName(food, "pdf"), { type: "application/pdf" });
   }
 
+  if (kind === "jpeg") {
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.92));
+    return new File([blob], labelName(food, "jpg"), { type: "image/jpeg" });
+  }
+
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
   return new File([blob], labelName(food, "png"), { type: "image/png" });
 }
 
-// Hands the label to the system share sheet, which is where Brother
-// iPrint&Label, P-touch Design&Print, Dymo and AirPrint all appear.
-export async function shareLabel(food, kind) {
-  const file = await labelFile(food, kind);
+// Built up front, because navigator.share() must run inside the tap that
+// triggered it: awaiting canvas work first loses iOS's user activation and
+// the sheet then arrives without the app targets (or refuses outright).
+export async function prepareLabel(food) {
+  const [png, jpeg, pdf] = await Promise.all([
+    labelFile(food, "png"),
+    labelFile(food, "jpeg"),
+    labelFile(food, "pdf"),
+  ]);
+  return { png, jpeg, pdf };
+}
 
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: food.name });
-      return "shared";
-    } catch (error) {
+// Called synchronously from the click handler with an already-built file.
+// JPEG is the safest format for label apps — it is what a camera produces, so
+// every one of them accepts it, while some reject PNG.
+export function shareFile(file) {
+  if (!navigator.canShare?.({ files: [file] })) return saveFile(file);
+
+  return navigator.share({ files: [file] })
+    .then(() => "shared")
+    .catch((error) => {
       if (error.name === "AbortError") return "cancelled";
-      // Fall through to saving if the share sheet refused the file.
-    }
-  }
-  return saveFile(file);
+      // The sheet refused the file; fall back to saving it.
+      return saveFile(file);
+    });
 }
 
 // Saving never navigates away, so cancelling a save cannot strand the app.

@@ -13,7 +13,7 @@
 <!-- iOS only accepts a PNG here; an SVG silently yields a blank home screen icon. -->
 <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608191147">
+<link rel="stylesheet" href="styles.css?v=202608191208">
 </head>
 <body>
 
@@ -133,8 +133,13 @@
     <button id="detail-print" class="btn ghost small" type="button">Print</button>
     <button id="detail-png" class="btn ghost small" type="button">Save PNG</button>
     <button id="detail-pdf" class="btn ghost small" type="button">Save PDF</button>
+    <button id="detail-photos" class="btn ghost small" type="button">Save to Photos</button>
     <button id="detail-edit" class="btn ghost small" type="button">Edit</button>
   </div>
+  <p class="hint">
+    If your label app isn't in the share sheet: Save to Photos, then open
+    iPrint&amp;Label and import the picture from your photo library.
+  </p>
 </dialog>
 
 <!-- Picture search -->
@@ -176,7 +181,7 @@
     addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
   }
 </script>
-<script src="js/config.js?v=202608191147"></script>
-<script type="module" src="js/app.js?v=202608191147"></script>
+<script src="js/config.js?v=202608191208"></script>
+<script type="module" src="js/app.js?v=202608191208"></script>
 </body>
 </html>

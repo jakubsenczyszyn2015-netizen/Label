@@ -2,7 +2,7 @@ import {
   listPeople, addPerson, deletePerson,
   listFoods, addFood, updateFood, deleteFood,
 } from "./store.js";
-import { labelPng, printLabel, saveLabel, shareLabel } from "./label.js";
+import { labelPng, printLabel, saveLabel, shareFile, prepareLabel } from "./label.js";
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
 
@@ -54,6 +54,7 @@ let currentPerson = null;
 let pickedImage = "";
 let editingFood = null;
 let detailFood = null;
+let labelFiles = null;
 
 // Older phone browsers lack <dialog>; fall back to plain show/hide + a scrim.
 const nativeDialog = typeof HTMLDialogElement !== "undefined" &&
@@ -517,11 +518,15 @@ foodImageUrl.addEventListener("input", () => {
 
 async function openFoodDetail(food) {
   detailFood = food;
+  labelFiles = null;
   detailTitle.textContent = food.name;
   detailLabel.removeAttribute("src");
   say("");
   openModal(detailDialog);
+
   detailLabel.src = await labelPng(food);
+  // Ready before the first tap, so sharing runs inside the tap itself.
+  labelFiles = await prepareLabel(food);
 }
 
 detailDialog.querySelector("[data-close]").addEventListener("click", () => {
@@ -555,8 +560,19 @@ async function runAction(label, work) {
 }
 
 // The share sheet is where Brother iPrint&Label, P-touch and AirPrint appear.
-document.getElementById("detail-share").addEventListener("click", () =>
-  runAction("Opening share sheet", () => shareLabel(detailFood, "png")));
+// JPEG goes out rather than PNG: label apps expect camera-style images and
+// several reject PNG with an "unsupported file" message.
+document.getElementById("detail-share").addEventListener("click", () => {
+  if (!detailFood) return;
+  if (!labelFiles) {
+    say("Still preparing the label — try again in a second.");
+    return;
+  }
+  say("Opening share sheet…");
+  Promise.resolve(shareFile(labelFiles.jpeg))
+    .then((how) => say(how === "shared" || how === "cancelled" ? "" : (OUTCOME[how] ?? "")))
+    .catch((error) => say(`Sharing failed: ${error.message}`));
+});
 
 document.getElementById("detail-print").addEventListener("click", () =>
   runAction("Printing", () => printLabel(detailFood)));
@@ -566,6 +582,15 @@ document.getElementById("detail-png").addEventListener("click", () =>
 
 document.getElementById("detail-pdf").addEventListener("click", () =>
   runAction("Saving PDF", () => saveLabel(detailFood, "pdf")));
+
+document.getElementById("detail-photos").addEventListener("click", () => {
+  if (!labelFiles) {
+    say("Still preparing the label — try again in a second.");
+    return;
+  }
+  say("Choose “Save Image” to put it in Photos.");
+  Promise.resolve(shareFile(labelFiles.jpeg)).catch(() => {});
+});
 
 document.getElementById("detail-edit").addEventListener("click", () => {
   closeModal(detailDialog);

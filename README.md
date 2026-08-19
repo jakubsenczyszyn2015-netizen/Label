@@ -20,7 +20,12 @@ A minimal label-printing app, built as a static site for GitHub Pages.
   per device, never synced
 - Tap a food to preview its label, then **Send to label app** (share sheet —
   Brother iPrint&Label, P-touch Design&Print, Dymo, AirPrint), **Print**,
-  **Save PNG**, **Save PDF** or **Edit**
+  **Save PNG**, **Save PDF**, **Save to Photos** or **Edit**
+- Sharing sends a JPEG, not a PNG: label apps expect camera-style images and
+  some reject PNG. The files are built when the dialog opens so the share call
+  runs inside the tap, which iOS requires
+- If a label app still won't take the share, Save to Photos and import the
+  picture from the photo library inside that app
 - PDFs are generated in the app (`js/pdf.js` embeds the label as a JPEG in a
   one-page PDF), so saving one never depends on the print dialog
 - Unlocking is remembered on the device until you press the lock button
