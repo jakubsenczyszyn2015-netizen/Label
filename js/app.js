@@ -2,15 +2,18 @@ import {
   listPeople, addPerson, deletePerson,
   listFoods, addFood, updateFood, deleteFood,
 } from "./store.js";
-import { labelPng, drawLabel, saveLabel, shareFile, prepareLabel } from "./label.js";
+import {
+  labelPng, drawLabel, saveLabel, shareFile, prepareLabel, systemPrint,
+} from "./label.js";
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
 import {
   MEDIA, mediaById, printingSupported, connectPrinter, currentPrinter,
   printToPrinter,
 } from "./printer.js";
-import { addNotice, notices, onNotices, markAllSeen, unseenCount, checkForUpdate }
-  from "./notices.js";
+import {
+  addNotice, onNotices, markAllSeen, unseenCount, checkForUpdate, watchForUpdates,
+} from "./notices.js";
 
 const cfg = window.LABEL_CONFIG || {};
 
@@ -241,7 +244,9 @@ for (const bell of document.querySelectorAll("[data-bell]")) {
   });
 }
 
-checkForUpdate(document.documentElement.dataset.build || "dev");
+const BUILD = document.documentElement.dataset.build || "dev";
+checkForUpdate(BUILD);
+watchForUpdates(BUILD);
 
 // Theme is per-device: it lives in this browser's storage, never in Supabase.
 function applyTheme(mode) {
@@ -645,6 +650,20 @@ async function runAction(label, work) {
   }
 }
 
+const holdDialog = document.getElementById("hold-dialog");
+const holdImage = document.getElementById("hold-image");
+const holdWhy = document.getElementById("hold-why");
+
+// Shown whenever the share sheet is unavailable or refuses the file. Pressing
+// and holding an image works on every phone, so this is the route that cannot
+// fail — an <a download> is inert inside an installed iOS app.
+function offerHold(reason) {
+  holdWhy.textContent = reason;
+  holdImage.src = detailLabel.src;
+  closeModal(detailDialog);
+  openModal(holdDialog);
+}
+
 // The share sheet is where Brother iPrint&Label, P-touch and AirPrint appear.
 // JPEG goes out rather than PNG: label apps expect camera-style images and
 // several reject PNG with an "unsupported file" message.
@@ -655,9 +674,17 @@ document.getElementById("detail-share").addEventListener("click", () => {
     return;
   }
   say("Opening share sheet…");
-  Promise.resolve(shareFile(labelFiles.jpeg))
-    .then((how) => say(how === "shared" || how === "cancelled" ? "" : (OUTCOME[how] ?? "")))
-    .catch((error) => say(`Sharing failed: ${error.message}`));
+
+  Promise.resolve(shareFile(labelFiles.jpeg)).then((how) => {
+    say("");
+    if (how === "unsupported") {
+      offerHold("This browser can't hand files to other apps, so save the " +
+        "label to your photos instead.");
+    } else if (how === "refused") {
+      offerHold("The share sheet wouldn't take the file. Saving it to your " +
+        "photos works just as well.");
+    }
+  });
 });
 
 const printDialog = document.getElementById("print-dialog");
@@ -730,6 +757,17 @@ async function connect(kind) {
   }
 }
 
+document.getElementById("system-print").addEventListener("click", async () => {
+  if (!detailFood) return;
+  printSay("Opening the system print dialog…");
+  try {
+    await systemPrint(detailFood);
+    printSay("If your label printer isn't listed, it isn't on this network.", "");
+  } catch (error) {
+    printSay(`Could not open printing: ${error.message}`, "warn");
+  }
+});
+
 connectUsb.addEventListener("click", () => connect("usb"));
 connectBt.addEventListener("click", () => connect("bluetooth"));
 
@@ -763,8 +801,10 @@ document.getElementById("detail-photos").addEventListener("click", () => {
     say("Still preparing the label — try again in a second.");
     return;
   }
-  say("Choose “Save Image” to put it in Photos.");
-  Promise.resolve(shareFile(labelFiles.jpeg)).catch(() => {});
+  Promise.resolve(shareFile(labelFiles.jpeg)).then((how) => {
+    if (how === "shared" || how === "cancelled") return;
+    offerHold("Press and hold the label to save it to your photos.");
+  });
 });
 
 document.getElementById("detail-edit").addEventListener("click", () => {

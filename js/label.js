@@ -205,15 +205,49 @@ export async function prepareLabel(food) {
 // JPEG is the safest format for label apps — it is what a camera produces, so
 // every one of them accepts it, while some reject PNG.
 export function shareFile(file) {
-  if (!navigator.canShare?.({ files: [file] })) return saveFile(file);
+  // "unsupported" and "refused" are reported rather than silently downloaded:
+  // an <a download> does nothing at all inside an installed iOS app, which
+  // makes a failed share look like a dead button.
+  if (!navigator.canShare?.({ files: [file] })) return Promise.resolve("unsupported");
 
   return navigator.share({ files: [file] })
     .then(() => "shared")
     .catch((error) => {
       if (error.name === "AbortError") return "cancelled";
-      // The sheet refused the file; fall back to saving it.
-      return saveFile(file);
+      console.warn("Share refused:", error.name, error.message);
+      return "refused";
     });
+}
+
+// The OS print dialog. Useless for USB label printers, but a networked label
+// printer that speaks AirPrint or Mopria does appear here.
+export async function systemPrint(food) {
+  const png = await labelPng(food);
+  const title = food.name.replace(/[<&>]/g, "");
+
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.append(frame);
+
+  frame.addEventListener("load", () => {
+    const view = frame.contentWindow;
+    view.focus();
+    view.print();
+    setTimeout(() => frame.remove(), 60000);
+  });
+
+  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8">
+    <title>${title}</title>
+    <style>
+      @page { size: auto; margin: 6mm; }
+      html, body { margin: 0; height: 100%; }
+      body { display: flex; align-items: center; justify-content: center; }
+      img { width: 100%; max-width: 170mm; }
+    </style></head>
+    <body><img src="${png}" alt="${title}"></body></html>`;
+
+  return "printing";
 }
 
 // Saving never navigates away, so cancelling a save cannot strand the app.

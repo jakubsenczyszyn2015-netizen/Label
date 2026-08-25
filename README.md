@@ -22,8 +22,10 @@ A minimal label-printing app, built as a static site for GitHub Pages.
   over WebUSB or Web Bluetooth and send Brother raster commands straight to it,
   with no OS print dialog. Chrome/Edge on desktop and Android only — no iOS
   browser exposes those APIs, so iPhones fall back to the share sheet
-- A bell in the header holds app notices; when the page is running an older
+- A bell at the top left holds app notices; when the page is running an older
   build than the deployed one it shows **Out dated!** with an Update button
+  that clears the caches and service worker before reloading. Seen notices
+  stay seen across restarts
 - On iPhone/iPad the app asks to be added to the Home Screen first, with
   step-by-step instructions. Desktop is never gated
 - Tap a food to preview its label, then **Send to label app** (share sheet —
@@ -32,8 +34,11 @@ A minimal label-printing app, built as a static site for GitHub Pages.
 - Sharing sends a JPEG, not a PNG: label apps expect camera-style images and
   some reject PNG. The files are built when the dialog opens so the share call
   runs inside the tap, which iOS requires
-- If a label app still won't take the share, Save to Photos and import the
-  picture from the photo library inside that app
+- If the share sheet is missing or refuses the file, a save sheet appears with
+  the label to press and hold — an `<a download>` is inert inside an installed
+  iOS app, so the button must never rely on it
+- Wi-Fi label printers that speak AirPrint or Mopria can be reached from the
+  print sheet's system dialog option
 - PDFs are generated in the app (`js/pdf.js` embeds the label as a JPEG in a
   one-page PDF), so saving one never depends on the print dialog
 - Unlocking is remembered on the device until you press the lock button

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-build="202608252033">
+<html lang="en" data-build="202608252110">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -13,7 +13,7 @@
 <!-- iOS only accepts a PNG here; an SVG silently yields a blank home screen icon. -->
 <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608252033">
+<link rel="stylesheet" href="styles.css?v=202608252110">
 </head>
 <body>
 
@@ -51,10 +51,10 @@
   <!-- People view -->
   <section id="people-view">
     <header class="topbar">
+      <button class="bell" type="button" data-bell aria-label="Notifications"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="dot" hidden></span></button>
       <h2 class="title">People</h2>
       <div class="actions">
         <button id="add-person" class="plus" type="button" aria-label="Add person">+</button>
-        <button class="theme-toggle bell" type="button" data-bell aria-label="Notifications">🔔<span class="dot" hidden></span></button>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">☾</button>
         <button class="theme-toggle" type="button" data-lock aria-label="Lock app" title="Lock">⎋</button>
       </div>
@@ -70,11 +70,11 @@
   <!-- Food view for one person -->
   <section id="food-view" hidden>
     <header class="topbar">
-      <button id="back" class="back" type="button" aria-label="Back to people">‹</button>
+      <button class="bell" type="button" data-bell aria-label="Notifications"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="dot" hidden></span></button>
+      <button id="back" class="back offset" type="button" aria-label="Back to people">‹</button>
       <h2 class="title">Food</h2>
       <div class="actions">
         <button id="add-food" class="plus" type="button" aria-label="Add food">+</button>
-        <button class="theme-toggle bell" type="button" data-bell aria-label="Notifications">🔔<span class="dot" hidden></span></button>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">☾</button>
       </div>
     </header>
@@ -160,6 +160,21 @@
   </p>
 </dialog>
 
+<!-- Long-press save (the reliable iOS route) -->
+<dialog id="hold-dialog" class="dialog wide">
+  <header class="dialog-head">
+    <h3 class="dialog-title">Save this label</h3>
+    <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+  </header>
+  <p id="hold-why" class="dialog-text"></p>
+  <ol class="steps tight">
+    <li><span class="step-n">1</span><span><strong>Press and hold</strong> the label below.</span></li>
+    <li><span class="step-n">2</span><span>Choose <strong>Save to Photos</strong> (or Add to Photos).</span></li>
+    <li><span class="step-n">3</span><span>Open your label app and import it from your photo library.</span></li>
+  </ol>
+  <img id="hold-image" class="label-preview holdable" alt="Label to save">
+</dialog>
+
 <!-- Custom label printing -->
 <dialog id="print-dialog" class="dialog wide">
   <header class="dialog-head">
@@ -176,6 +191,12 @@
     <button id="connect-usb" class="btn ghost small" type="button">Connect by USB</button>
     <button id="connect-bt" class="btn ghost small" type="button">Connect by Bluetooth</button>
   </div>
+
+  <p class="hint left">
+    Wi-Fi label printers (AirPrint or Mopria) can also be reached through the
+    system dialog:
+  </p>
+  <button id="system-print" class="btn ghost small wide-btn" type="button">Use system print dialog</button>
 
   <label class="label" for="print-media">Label size</label>
   <select id="print-media" class="field"></select>
@@ -239,7 +260,7 @@
     addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
   }
 </script>
-<script src="js/config.js?v=202608252033"></script>
-<script type="module" src="js/app.js?v=202608252033"></script>
+<script src="js/config.js?v=202608252110"></script>
+<script type="module" src="js/app.js?v=202608252110"></script>
 </body>
 </html>
