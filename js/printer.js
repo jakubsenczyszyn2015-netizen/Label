@@ -8,14 +8,55 @@
 
 const BROTHER_VENDOR = 0x04f9;
 
-// Bytes per raster line = printable dots / 8. Values come from Brother's
-// raster command reference for each media size.
+// QL printers always take a 90-byte (720-dot) raster line at 300dpi; the
+// printable area of the loaded tape sits centred inside it. P-touch tape
+// models use a 16-byte (128-dot) line instead. Figures follow Brother's
+// raster command reference.
+const QL_LINE_BYTES = 90;
+const QL_LINE_DOTS = QL_LINE_BYTES * 8;
+const PT_LINE_BYTES = 16;
+const PT_LINE_DOTS = PT_LINE_BYTES * 8;
+const DOTS_PER_MM = 11.81; // 300 dpi
+
 export const MEDIA = [
-  { id: "ql-62", label: "QL continuous 62mm", bytes: 90, dots: 720, type: 0x0a, width: 62 },
-  { id: "ql-29", label: "QL continuous 29mm", bytes: 36, dots: 288, type: 0x0a, width: 29 },
-  { id: "pt-24", label: "P-touch tape 24mm", bytes: 16, dots: 128, type: 0x00, width: 24 },
-  { id: "pt-12", label: "P-touch tape 12mm", bytes: 16, dots: 128, type: 0x00, width: 12 },
+  { id: "ql-62", label: "QL continuous 62mm", family: "ql", width: 62, dots: 696 },
+  { id: "ql-52", label: "QL continuous 52mm", family: "ql", width: 52, dots: 578 },
+  { id: "ql-29", label: "QL continuous 29mm", family: "ql", width: 29, dots: 306 },
+  { id: "pt-24", label: "P-touch tape 24mm", family: "pt", width: 24, dots: 128 },
+  { id: "pt-12", label: "P-touch tape 12mm", family: "pt", width: 12, dots: 106 },
 ];
+
+// Anything not in the list: give a width in millimetres and the printable
+// dots are derived from it.
+export function customMedia(widthMm, family = "ql") {
+  const width = Math.max(6, Math.min(family === "ql" ? 62 : 36, Number(widthMm) || 62));
+  const lineDots = family === "ql" ? QL_LINE_DOTS : PT_LINE_DOTS;
+  const dots = Math.min(lineDots, Math.round(width * DOTS_PER_MM / 8) * 8);
+  return {
+    id: `custom-${width}`,
+    label: `Custom ${width}mm`,
+    family,
+    width: Math.round(width),
+    dots,
+    custom: true,
+  };
+}
+
+// Where the printable area starts inside the raster line, and how wide the
+// line is, for a given medium.
+export function geometry(media) {
+  const lineBytes = media.family === "pt" ? PT_LINE_BYTES : QL_LINE_BYTES;
+  const lineDots = lineBytes * 8;
+  const dots = Math.min(media.dots, lineDots);
+  return {
+    lineBytes,
+    lineDots,
+    dots,
+    // Centred, and byte-aligned so a row never straddles awkwardly.
+    offset: Math.max(0, Math.floor((lineDots - dots) / 16) * 8),
+    mediaType: media.family === "pt" ? 0x00 : 0x0a,
+  };
+}
 
 export function mediaById(id) {
   return MEDIA.find((entry) => entry.id === id) || MEDIA[0];
@@ -27,29 +68,33 @@ export function printingSupported() {
 
 /* ---------- Raster encoding ---------- */
 
-// Scales the label to the printer's dot width and turns it into 1-bit rows.
+// Scales the label to the printable width, then lays it into the raster line
+// at the right offset so it comes out centred on the tape.
 function toBitmap(canvas, media) {
-  const width = media.dots;
-  const height = Math.max(1, Math.round((canvas.height / canvas.width) * width));
+  const { lineBytes, dots, offset } = geometry(media);
+  const height = Math.max(1, Math.round((canvas.height / canvas.width) * dots));
 
   const scaled = document.createElement("canvas");
-  scaled.width = width;
+  scaled.width = dots;
   scaled.height = height;
   const ctx = scaled.getContext("2d");
   ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(canvas, 0, 0, width, height);
+  ctx.fillRect(0, 0, dots, height);
+  ctx.drawImage(canvas, 0, 0, dots, height);
 
-  const { data } = ctx.getImageData(0, 0, width, height);
+  const { data } = ctx.getImageData(0, 0, dots, height);
   const rows = [];
 
   for (let y = 0; y < height; y += 1) {
-    const row = new Uint8Array(media.bytes);
-    for (let x = 0; x < width; x += 1) {
-      const at = (y * width + x) * 4;
+    const row = new Uint8Array(lineBytes);
+    for (let x = 0; x < dots; x += 1) {
+      const at = (y * dots + x) * 4;
       // Simple luminance threshold: thermal printers are pure black/white.
       const lit = (data[at] * 0.299 + data[at + 1] * 0.587 + data[at + 2] * 0.114) < 128;
-      if (lit) row[x >> 3] |= 0x80 >> (x & 7);
+      if (lit) {
+        const bit = x + offset;
+        row[bit >> 3] |= 0x80 >> (bit & 7);
+      }
     }
     rows.push(row);
   }
@@ -57,6 +102,7 @@ function toBitmap(canvas, media) {
 }
 
 export async function encodeLabel(canvas, media, copies = 1) {
+  const { lineBytes, mediaType } = geometry(media);
   const rows = toBitmap(canvas, media);
   const out = [];
   const push = (...bytes) => out.push(...bytes);
@@ -67,8 +113,8 @@ export async function encodeLabel(canvas, media, copies = 1) {
 
   for (let copy = 0; copy < copies; copy += 1) {
     const count = rows.length;
-    // Print information: media type, width, length, raster count.
-    push(0x1b, 0x69, 0x7a, 0x86, media.type, media.width, 0x00,
+    // Print information: media type, width in mm, length, raster count.
+    push(0x1b, 0x69, 0x7a, 0x86, mediaType, media.width, 0x00,
       count & 0xff, (count >> 8) & 0xff, (count >> 16) & 0xff, (count >> 24) & 0xff,
       copy === 0 ? 0x00 : 0x01, 0x00);
 
@@ -78,7 +124,7 @@ export async function encodeLabel(canvas, media, copies = 1) {
     push(0x4d, 0x00);                   // no compression
 
     for (const row of rows) {
-      push(0x67, 0x00, media.bytes, ...row);
+      push(0x67, 0x00, lineBytes, ...row);
     }
 
     // 0x0C ends a page mid-job; 0x1A ends the last one and feeds.
@@ -190,13 +236,63 @@ class BluetoothPrinter {
   }
 }
 
+// Wi-Fi printing goes through the bridge in tools/print-bridge.mjs, because a
+// browser cannot open the raw TCP socket a Brother printer listens on.
+class NetworkPrinter {
+  constructor(host, bridge) {
+    this.host = host;
+    this.bridge = bridge.replace(/\/$/, "");
+    this.name = `${host} (Wi-Fi)`;
+  }
+
+  async open() {
+    const response = await fetch(`${this.bridge}/bridge`, { cache: "no-store" });
+    if (!response.ok) throw new Error("The print bridge did not answer");
+  }
+
+  async send(bytes) {
+    const response = await fetch(
+      `${this.bridge}/print?host=${encodeURIComponent(this.host)}`,
+      { method: "POST", body: bytes, headers: { "content-type": "application/octet-stream" } },
+    );
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || `Bridge returned ${response.status}`);
+    }
+  }
+
+  async close() { /* stateless */ }
+}
+
+// An HTTPS page may not call an HTTP bridge, so say so rather than failing
+// with an opaque network error.
+export function bridgeBlocked(bridge) {
+  return location.protocol === "https:" && bridge.startsWith("http:");
+}
+
+export function defaultBridge() {
+  // Served by the bridge itself? Then it is simply this origin.
+  return localStorage.getItem("label.bridge") || location.origin;
+}
+
 let connected = null;
 
 export function currentPrinter() {
   return connected;
 }
 
-export async function connectPrinter(kind) {
+export async function connectPrinter(kind, options = {}) {
+  if (kind === "wifi") {
+    const bridge = options.bridge || defaultBridge();
+    if (bridgeBlocked(bridge)) {
+      throw new Error("An https page can't reach an http bridge — open Label " +
+        "from the bridge address itself");
+    }
+    connected = new NetworkPrinter(options.host, bridge);
+    await connected.open();
+    return connected;
+  }
+
   if (kind === "bluetooth") {
     if (!navigator.bluetooth) throw new Error("This browser has no Bluetooth access");
     connected = await BluetoothPrinter.request();
@@ -213,9 +309,8 @@ export async function disconnectPrinter() {
   connected = null;
 }
 
-export async function printToPrinter(canvas, mediaId, copies) {
+export async function printToPrinter(canvas, media, copies) {
   if (!connected) throw new Error("No printer connected");
-  const media = mediaById(mediaId);
   await connected.send(await encodeLabel(canvas, media, copies));
   return "printed";
 }

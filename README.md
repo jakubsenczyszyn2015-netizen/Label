@@ -19,9 +19,13 @@ A minimal label-printing app, built as a static site for GitHub Pages.
 - A light/dark toggle sits in the top right of both screens; the choice is saved
   per device, never synced
 - **Direct label printing** (`js/printer.js`): connect a Brother QL or P-touch
-  over WebUSB or Web Bluetooth and send Brother raster commands straight to it,
-  with no OS print dialog. Chrome/Edge on desktop and Android only — no iOS
-  browser exposes those APIs, so iPhones fall back to the share sheet
+  over USB, Bluetooth or Wi-Fi and send Brother raster commands straight to it,
+  with no OS print dialog
+- Label sizes: QL 62mm, **52mm**, 29mm, P-touch 24mm and 12mm, plus a **custom
+  width in millimetres**. The raster line stays 90 bytes (720 dots) as QL
+  models require; the printable area is scaled and centred inside it
+- **Wi-Fi printing** works on any device, iPhones included, via the bridge in
+  `tools/print-bridge.mjs` — see below. USB and Bluetooth need Chrome or Edge
 - A bell at the top left holds app notices; when the page is running an older
   build than the deployed one it shows **Out dated!** with an Update button
   that clears the caches and service worker before reloading. Seen notices
@@ -67,6 +71,25 @@ Run `python3 tools/stamp.py` before committing. It re-versions the CSS/JS links
 in `index.html` so phones pick up the new build instead of a cached one.
 
 Push to `main`. In **Settings → Pages**, set the source to **GitHub Actions**; the workflow in `.github/workflows/pages.yml` publishes the repo root.
+
+## Wi-Fi printing
+
+Browsers can't open the raw TCP socket a Brother printer listens on (port
+9100), so a small bridge does it. Run it on any computer on the same Wi-Fi:
+
+```
+node tools/print-bridge.mjs --port 8080 --printer 192.168.1.50
+```
+
+It prints the addresses it's serving on. Open one of them on the phone — the
+bridge serves Label itself, so the page and the printer share an origin and
+the browser won't block the request as mixed content. In the print sheet,
+choose **Connect by Wi-Fi**, enter the printer's IP, and print.
+
+The printer's IP is on its network settings printout (on a QL, hold the cut
+button, or check your router's device list). Opening Label from GitHub Pages
+over https cannot reach an http bridge — the app says so rather than failing
+silently.
 
 ## Supabase
 

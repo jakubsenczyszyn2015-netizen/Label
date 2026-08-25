@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-build="202608252110">
+<html lang="en" data-build="202608252123">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -13,7 +13,7 @@
 <!-- iOS only accepts a PNG here; an SVG silently yields a blank home screen icon. -->
 <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608252110">
+<link rel="stylesheet" href="styles.css?v=202608252123">
 </head>
 <body>
 
@@ -190,6 +190,20 @@
   <div class="connect-row">
     <button id="connect-usb" class="btn ghost small" type="button">Connect by USB</button>
     <button id="connect-bt" class="btn ghost small" type="button">Connect by Bluetooth</button>
+    <button id="connect-wifi" class="btn ghost small" type="button">Connect by Wi-Fi</button>
+  </div>
+
+  <div id="wifi-fields" hidden>
+    <label class="label" for="printer-host">Printer IP address</label>
+    <input id="printer-host" class="field" type="text" inputmode="decimal"
+           placeholder="192.168.1.50" autocomplete="off">
+    <label class="label" for="bridge-url">Print bridge</label>
+    <input id="bridge-url" class="field" type="url" placeholder="http://192.168.1.20:8080">
+    <p class="hint left">
+      Run <code>node tools/print-bridge.mjs</code> on a computer on the same
+      Wi-Fi, then open Label from the address it prints.
+    </p>
+    <button id="wifi-go" class="btn small wide-btn" type="button">Connect</button>
   </div>
 
   <p class="hint left">
@@ -200,6 +214,11 @@
 
   <label class="label" for="print-media">Label size</label>
   <select id="print-media" class="field"></select>
+
+  <div id="custom-size" hidden>
+    <label class="label" for="custom-mm">Width in millimetres</label>
+    <input id="custom-mm" class="field" type="number" min="6" max="62" step="1" value="52">
+  </div>
 
   <label class="label" for="print-copies">Copies</label>
   <input id="print-copies" class="field" type="number" min="1" max="20" value="1">
@@ -260,7 +279,7 @@
     addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
   }
 </script>
-<script src="js/config.js?v=202608252110"></script>
-<script type="module" src="js/app.js?v=202608252110"></script>
+<script src="js/config.js?v=202608252123"></script>
+<script type="module" src="js/app.js?v=202608252123"></script>
 </body>
 </html>

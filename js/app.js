@@ -8,8 +8,8 @@ import {
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
 import {
-  MEDIA, mediaById, printingSupported, connectPrinter, currentPrinter,
-  printToPrinter,
+  MEDIA, mediaById, customMedia, printingSupported, connectPrinter,
+  currentPrinter, printToPrinter, defaultBridge, bridgeBlocked,
 } from "./printer.js";
 import {
   addNotice, onNotices, markAllSeen, unseenCount, checkForUpdate, watchForUpdates,
@@ -696,15 +696,36 @@ const printStatus = document.getElementById("print-status");
 const connectUsb = document.getElementById("connect-usb");
 const connectBt = document.getElementById("connect-bt");
 
-printMedia.replaceChildren(...MEDIA.map((entry) => {
-  const option = document.createElement("option");
-  option.value = entry.id;
-  option.textContent = entry.label;
-  return option;
-}));
+const customSize = document.getElementById("custom-size");
+const customMm = document.getElementById("custom-mm");
+
+printMedia.replaceChildren(...[...MEDIA, { id: "custom", label: "Custom size…" }]
+  .map((entry) => {
+    const option = document.createElement("option");
+    option.value = entry.id;
+    option.textContent = entry.label;
+    return option;
+  }));
+
 printMedia.value = localStorage.getItem("label.media") || MEDIA[0].id;
-printMedia.addEventListener("change", () =>
-  localStorage.setItem("label.media", printMedia.value));
+customMm.value = localStorage.getItem("label.media-mm") || "52";
+
+function syncMedia() {
+  customSize.hidden = printMedia.value !== "custom";
+  localStorage.setItem("label.media", printMedia.value);
+  localStorage.setItem("label.media-mm", customMm.value);
+}
+
+printMedia.addEventListener("change", syncMedia);
+customMm.addEventListener("change", syncMedia);
+syncMedia();
+
+// What the printer is actually asked to lay down.
+function chosenMedia() {
+  return printMedia.value === "custom"
+    ? customMedia(customMm.value)
+    : mediaById(printMedia.value);
+}
 
 function printSay(message, tone = "") {
   printStatus.textContent = message;
@@ -725,13 +746,13 @@ document.getElementById("detail-print").addEventListener("click", () => {
   if (!detailFood) return;
   showPrinter();
 
-  const supported = printingSupported();
   connectUsb.disabled = !navigator.usb;
   connectBt.disabled = !navigator.bluetooth;
 
-  printSay(supported ? "" : "This browser can't talk to printers directly. " +
-    "Use “Send to label app” instead, or open Label in Chrome on a computer.",
-    supported ? "" : "warn");
+  // Wi-Fi works everywhere the bridge is reachable, iPhones included.
+  printSay(printingSupported() ? "" : "USB and Bluetooth printing need Chrome " +
+    "or Edge. On iPhone, use Wi-Fi printing through the bridge.",
+    printingSupported() ? "" : "warn");
 
   openModal(printDialog);
 });
@@ -771,6 +792,48 @@ document.getElementById("system-print").addEventListener("click", async () => {
 connectUsb.addEventListener("click", () => connect("usb"));
 connectBt.addEventListener("click", () => connect("bluetooth"));
 
+const wifiFields = document.getElementById("wifi-fields");
+const printerHost = document.getElementById("printer-host");
+const bridgeUrl = document.getElementById("bridge-url");
+
+printerHost.value = localStorage.getItem("label.printer-host") || "";
+bridgeUrl.value = localStorage.getItem("label.bridge") || defaultBridge();
+
+document.getElementById("connect-wifi").addEventListener("click", () => {
+  wifiFields.hidden = !wifiFields.hidden;
+  if (!wifiFields.hidden) printerHost.focus();
+});
+
+document.getElementById("wifi-go").addEventListener("click", async () => {
+  const host = printerHost.value.trim();
+  const bridge = bridgeUrl.value.trim() || defaultBridge();
+
+  if (!host) {
+    printSay("Enter the printer's IP address — it's on the printer's network " +
+      "settings printout.", "warn");
+    return;
+  }
+  if (bridgeBlocked(bridge)) {
+    printSay("This page is on https, so it can't reach an http bridge. Open " +
+      "Label from the bridge's own address instead.", "warn");
+    return;
+  }
+
+  localStorage.setItem("label.printer-host", host);
+  localStorage.setItem("label.bridge", bridge);
+
+  printSay("Contacting the bridge…");
+  try {
+    const printer = await connectPrinter("wifi", { host, bridge });
+    showPrinter();
+    printSay(`Ready to print to ${printer.name}.`, "ok");
+    wifiFields.hidden = true;
+  } catch (error) {
+    showPrinter();
+    printSay(`Could not reach the bridge: ${error.message}`, "warn");
+  }
+});
+
 document.getElementById("print-send").addEventListener("click", async () => {
   if (!detailFood) return;
   if (!currentPrinter()) {
@@ -783,7 +846,7 @@ document.getElementById("print-send").addEventListener("click", async () => {
 
   try {
     const canvas = await drawLabel(detailFood);
-    await printToPrinter(canvas, printMedia.value, copies);
+    await printToPrinter(canvas, chosenMedia(), copies);
     printSay("Sent to the printer.", "ok");
   } catch (error) {
     printSay(`Printing failed: ${error.message}`, "warn");

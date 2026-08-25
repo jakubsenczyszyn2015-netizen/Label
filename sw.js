@@ -1,6 +1,6 @@
 // Caches the app shell so Label opens instantly and works offline once
 // installed. Bump CACHE when the shell changes.
-const CACHE = "label-202608252110";
+const CACHE = "label-202608252123";
 const SHELL = [
   "./",
   "./index.html",
