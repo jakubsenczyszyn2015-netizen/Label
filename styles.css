@@ -696,3 +696,240 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ==========================================================================
+   Motion — short, eased, and never in the way of a tap.
+   ========================================================================== */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.dialog[open] { animation: rise .22s cubic-bezier(.2, .8, .3, 1); }
+.dialog[open]::backdrop { animation: fade .22s ease; }
+
+/* Rows arrive in a quick cascade when a list renders. */
+.people > li { animation: rise .26s cubic-bezier(.2, .8, .3, 1) backwards; }
+.people > li:nth-child(1) { animation-delay: .01s; }
+.people > li:nth-child(2) { animation-delay: .04s; }
+.people > li:nth-child(3) { animation-delay: .07s; }
+.people > li:nth-child(4) { animation-delay: .10s; }
+.people > li:nth-child(5) { animation-delay: .13s; }
+.people > li:nth-child(n+6) { animation-delay: .16s; }
+
+#food-view:not([hidden]) { animation: slide-in .24s cubic-bezier(.2, .8, .3, 1); }
+#people-view:not([hidden]) { animation: fade .2s ease; }
+
+.person:active { transform: scale(.985); }
+.result img { transition: transform .2s ease; }
+.result:hover img { transform: scale(1.05); }
+
+/* ==========================================================================
+   Install gate
+   ========================================================================== */
+.gate-text {
+  margin: 0;
+  max-width: 34ch;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.steps {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  font-size: 14px;
+  animation: rise .3s cubic-bezier(.2, .8, .3, 1) backwards;
+}
+
+.steps li:nth-child(2) { animation-delay: .06s; }
+.steps li:nth-child(3) { animation-delay: .12s; }
+
+.step-n {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, var(--accent-2), var(--accent));
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Notifications
+   ========================================================================== */
+.bell { position: relative; }
+
+.bell .dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.bell.ringing { animation: fade .3s ease; }
+
+.notices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notice {
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.notice.warn {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.notice-title {
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: -0.01em;
+}
+
+.notice.warn .notice-title { color: var(--warn); }
+
+.notice-body {
+  margin: 4px 0 10px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.notice .btn { width: 100%; }
+
+/* ==========================================================================
+   Print dialog
+   ========================================================================== */
+.printer-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  margin-bottom: 12px;
+}
+
+.pill {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.pill.on { background: var(--ok-soft); color: var(--ok); }
+
+.printer-name {
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connect-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.connect-row .btn { flex: 1; }
+
+.hint.warn { color: var(--warn); }
+.hint.ok { color: var(--ok); }
+
+select.field {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+                    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 21px, calc(100% - 13px) 21px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.dialog .label { margin-top: 2px; }
+
+/* ==========================================================================
+   Tablets and large screens — more room, two columns for lists
+   ========================================================================== */
+@media (min-width: 700px) {
+  .app { max-width: 860px; padding-left: 28px; padding-right: 28px; }
+
+  .title { font-size: 21px; }
+
+  .people {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .empty { grid-column: 1 / -1; }
+
+  .divider { max-width: 240px; }
+
+  .dialog.wide { width: min(90vw, 520px); }
+  .action-grid { grid-template-columns: repeat(3, 1fr); }
+  .action-grid .btn:first-child { grid-column: 1 / -1; }
+}
+
+@media (min-width: 1024px) {
+  .app { max-width: 980px; }
+  .people { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Landscape phones: keep the header compact so the list keeps its room. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .divider { margin: 8px auto 10px; }
+  .subtitle { display: none; }
+  .lock { gap: 8px; }
+  .lock-icon { width: 56px; height: 56px; }
+}

@@ -18,6 +18,14 @@ A minimal label-printing app, built as a static site for GitHub Pages.
   deleting a food removes it everywhere
 - A light/dark toggle sits in the top right of both screens; the choice is saved
   per device, never synced
+- **Direct label printing** (`js/printer.js`): connect a Brother QL or P-touch
+  over WebUSB or Web Bluetooth and send Brother raster commands straight to it,
+  with no OS print dialog. Chrome/Edge on desktop and Android only — no iOS
+  browser exposes those APIs, so iPhones fall back to the share sheet
+- A bell in the header holds app notices; when the page is running an older
+  build than the deployed one it shows **Out dated!** with an Update button
+- On iPhone/iPad the app asks to be added to the Home Screen first, with
+  step-by-step instructions. Desktop is never gated
 - Tap a food to preview its label, then **Send to label app** (share sheet —
   Brother iPrint&Label, P-touch Design&Print, Dymo, AirPrint), **Print**,
   **Save PNG**, **Save PDF**, **Save to Photos** or **Edit**

@@ -2,9 +2,15 @@ import {
   listPeople, addPerson, deletePerson,
   listFoods, addFood, updateFood, deleteFood,
 } from "./store.js";
-import { labelPng, printLabel, saveLabel, shareFile, prepareLabel } from "./label.js";
+import { labelPng, drawLabel, saveLabel, shareFile, prepareLabel } from "./label.js";
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
+import {
+  MEDIA, mediaById, printingSupported, connectPrinter, currentPrinter,
+  printToPrinter,
+} from "./printer.js";
+import { addNotice, notices, onNotices, markAllSeen, unseenCount, checkForUpdate }
+  from "./notices.js";
 
 const cfg = window.LABEL_CONFIG || {};
 
@@ -157,6 +163,86 @@ function showMaintenance(error) {
   return notice;
 }
 
+/* ---------- iPhone / iPad install gate ---------- */
+
+const gate = document.getElementById("install-gate");
+
+const isApplePhoneOrTablet = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  // iPadOS reports as a Mac, so look for the touch screen a Mac never has.
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+  window.navigator.standalone === true;
+
+// Desktop is unaffected: it just runs the app.
+const gated = isApplePhoneOrTablet && !isStandalone;
+
+if (gated) {
+  gate.hidden = false;
+  lock.hidden = true;
+  const note = document.getElementById("gate-note");
+  if (!/safari/i.test(navigator.userAgent) || /crios|fxios|edgios/i.test(navigator.userAgent)) {
+    note.textContent = "Open this page in Safari first — other iPhone browsers " +
+      "can't add apps to the Home Screen.";
+  }
+}
+
+/* ---------- Notifications ---------- */
+
+const noticeDialog = document.getElementById("notice-dialog");
+const noticeList = document.getElementById("notice-list");
+
+function renderNotices(items) {
+  noticeList.replaceChildren(...items.map((item) => {
+    const row = document.createElement("li");
+    row.className = `notice ${item.level || "info"}`;
+
+    const title = document.createElement("div");
+    title.className = "notice-title";
+    title.textContent = item.title;
+
+    const body = document.createElement("p");
+    body.className = "notice-body";
+    body.textContent = item.body;
+
+    row.append(title, body);
+
+    if (item.action) {
+      const button = document.createElement("button");
+      button.className = "btn small";
+      button.type = "button";
+      button.textContent = item.action.label;
+      button.addEventListener("click", item.action.run);
+      row.append(button);
+    }
+    return row;
+  }));
+
+  if (!items.length) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "Nothing to report.";
+    noticeList.append(empty);
+  }
+
+  const count = unseenCount();
+  for (const bell of document.querySelectorAll("[data-bell]")) {
+    bell.querySelector(".dot").hidden = count === 0;
+    bell.classList.toggle("ringing", count > 0);
+  }
+}
+
+onNotices(renderNotices);
+
+for (const bell of document.querySelectorAll("[data-bell]")) {
+  bell.addEventListener("click", () => {
+    openModal(noticeDialog);
+    markAllSeen();
+  });
+}
+
+checkForUpdate(document.documentElement.dataset.build || "dev");
+
 // Theme is per-device: it lives in this browser's storage, never in Supabase.
 function applyTheme(mode) {
   document.documentElement.dataset.theme = mode;
@@ -178,7 +264,7 @@ for (const button of document.querySelectorAll("[data-theme-toggle]")) {
 const UNLOCKED = "label.unlocked";
 
 // Unlocking sticks to the device until the lock button is used.
-if (localStorage.getItem(UNLOCKED) === "yes") {
+if (!gated && localStorage.getItem(UNLOCKED) === "yes") {
   queueMicrotask(unlock);
 }
 
@@ -574,8 +660,97 @@ document.getElementById("detail-share").addEventListener("click", () => {
     .catch((error) => say(`Sharing failed: ${error.message}`));
 });
 
-document.getElementById("detail-print").addEventListener("click", () =>
-  runAction("Printing", () => printLabel(detailFood)));
+const printDialog = document.getElementById("print-dialog");
+const printerPill = document.getElementById("printer-pill");
+const printerName = document.getElementById("printer-name");
+const printMedia = document.getElementById("print-media");
+const printCopies = document.getElementById("print-copies");
+const printStatus = document.getElementById("print-status");
+const connectUsb = document.getElementById("connect-usb");
+const connectBt = document.getElementById("connect-bt");
+
+printMedia.replaceChildren(...MEDIA.map((entry) => {
+  const option = document.createElement("option");
+  option.value = entry.id;
+  option.textContent = entry.label;
+  return option;
+}));
+printMedia.value = localStorage.getItem("label.media") || MEDIA[0].id;
+printMedia.addEventListener("change", () =>
+  localStorage.setItem("label.media", printMedia.value));
+
+function printSay(message, tone = "") {
+  printStatus.textContent = message;
+  printStatus.className = `hint ${tone}`;
+  printStatus.hidden = !message;
+}
+
+function showPrinter() {
+  const printer = currentPrinter();
+  printerPill.textContent = printer ? "Connected" : "No printer";
+  printerPill.classList.toggle("on", Boolean(printer));
+  printerName.textContent = printer
+    ? printer.name
+    : "Connect a label printer to print directly.";
+}
+
+document.getElementById("detail-print").addEventListener("click", () => {
+  if (!detailFood) return;
+  showPrinter();
+
+  const supported = printingSupported();
+  connectUsb.disabled = !navigator.usb;
+  connectBt.disabled = !navigator.bluetooth;
+
+  printSay(supported ? "" : "This browser can't talk to printers directly. " +
+    "Use “Send to label app” instead, or open Label in Chrome on a computer.",
+    supported ? "" : "warn");
+
+  openModal(printDialog);
+});
+
+async function connect(kind) {
+  printSay("Choose your printer in the browser prompt…");
+  try {
+    const printer = await connectPrinter(kind);
+    showPrinter();
+    printSay(`Connected to ${printer.name}.`, "ok");
+    addNotice({
+      id: `printer-${printer.name}`,
+      level: "info",
+      title: "Printer connected",
+      body: `${printer.name} is ready to print labels.`,
+    });
+  } catch (error) {
+    showPrinter();
+    // Dismissing the chooser is a cancel, not a failure.
+    printSay(error.name === "NotFoundError"
+      ? "No printer chosen."
+      : `Could not connect: ${error.message}`, "warn");
+  }
+}
+
+connectUsb.addEventListener("click", () => connect("usb"));
+connectBt.addEventListener("click", () => connect("bluetooth"));
+
+document.getElementById("print-send").addEventListener("click", async () => {
+  if (!detailFood) return;
+  if (!currentPrinter()) {
+    printSay("Connect a printer first.", "warn");
+    return;
+  }
+
+  const copies = Math.min(20, Math.max(1, Number(printCopies.value) || 1));
+  printSay(`Sending ${copies} label${copies > 1 ? "s" : ""}…`);
+
+  try {
+    const canvas = await drawLabel(detailFood);
+    await printToPrinter(canvas, printMedia.value, copies);
+    printSay("Sent to the printer.", "ok");
+  } catch (error) {
+    printSay(`Printing failed: ${error.message}`, "warn");
+  }
+});
 
 document.getElementById("detail-png").addEventListener("click", () =>
   runAction("Saving PNG", () => saveLabel(detailFood, "png")));

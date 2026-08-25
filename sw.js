@@ -1,6 +1,6 @@
 // Caches the app shell so Label opens instantly and works offline once
 // installed. Bump CACHE when the shell changes.
-const CACHE = "label-v1";
+const CACHE = "label-202608252033";
 const SHELL = [
   "./",
   "./index.html",
@@ -11,6 +11,9 @@ const SHELL = [
   "./js/label.js",
   "./js/image.js",
   "./js/allergens.js",
+  "./js/printer.js",
+  "./js/notices.js",
+  "./js/pdf.js",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/icon-192.png",
@@ -43,6 +46,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   // Supabase and picture searches must always go to the network.
   if (url.origin !== self.location.origin) return;
+  // The update check has to see the live file, never a cached copy.
+  if (url.pathname.endsWith("version.json")) return;
 
   // Network first, so a deploy is picked up as soon as the phone is online.
   event.respondWith(

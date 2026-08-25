@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-build="202608252033">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -13,9 +13,25 @@
 <!-- iOS only accepts a PNG here; an SVG silently yields a blank home screen icon. -->
 <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608191208">
+<link rel="stylesheet" href="styles.css?v=202608252033">
 </head>
 <body>
+
+<!-- iPhone/iPad install gate -->
+<section id="install-gate" class="lock" hidden>
+  <img class="lock-icon" src="assets/icon.svg" alt="">
+  <h1 class="lock-title">Install Label</h1>
+  <p class="gate-text">
+    On iPhone and iPad, Label runs from the Home Screen so printing, saving
+    and offline access all work properly.
+  </p>
+  <ol class="steps">
+    <li><span class="step-n">1</span><span>Tap the <strong>Share</strong> button in Safari — the square with an arrow.</span></li>
+    <li><span class="step-n">2</span><span>Scroll down and tap <strong>Add to Home Screen</strong>.</span></li>
+    <li><span class="step-n">3</span><span>Tap <strong>Add</strong>, then open <strong>Label</strong> from your Home Screen.</span></li>
+  </ol>
+  <p class="hint" id="gate-note"></p>
+</section>
 
 <!-- Lock screen -->
 <section id="lock" class="lock">
@@ -38,6 +54,7 @@
       <h2 class="title">People</h2>
       <div class="actions">
         <button id="add-person" class="plus" type="button" aria-label="Add person">+</button>
+        <button class="theme-toggle bell" type="button" data-bell aria-label="Notifications">🔔<span class="dot" hidden></span></button>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">☾</button>
         <button class="theme-toggle" type="button" data-lock aria-label="Lock app" title="Lock">⎋</button>
       </div>
@@ -57,6 +74,7 @@
       <h2 class="title">Food</h2>
       <div class="actions">
         <button id="add-food" class="plus" type="button" aria-label="Add food">+</button>
+        <button class="theme-toggle bell" type="button" data-bell aria-label="Notifications">🔔<span class="dot" hidden></span></button>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">☾</button>
       </div>
     </header>
@@ -142,6 +160,46 @@
   </p>
 </dialog>
 
+<!-- Custom label printing -->
+<dialog id="print-dialog" class="dialog wide">
+  <header class="dialog-head">
+    <h3 class="dialog-title">Print label</h3>
+    <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+  </header>
+
+  <div id="printer-state" class="printer-state">
+    <span class="pill" id="printer-pill">No printer</span>
+    <span id="printer-name" class="printer-name">Connect a label printer to print directly.</span>
+  </div>
+
+  <div class="connect-row">
+    <button id="connect-usb" class="btn ghost small" type="button">Connect by USB</button>
+    <button id="connect-bt" class="btn ghost small" type="button">Connect by Bluetooth</button>
+  </div>
+
+  <label class="label" for="print-media">Label size</label>
+  <select id="print-media" class="field"></select>
+
+  <label class="label" for="print-copies">Copies</label>
+  <input id="print-copies" class="field" type="number" min="1" max="20" value="1">
+
+  <p id="print-status" class="hint" hidden></p>
+
+  <div class="dialog-actions">
+    <button class="btn ghost" type="button" data-close>Close</button>
+    <button id="print-send" class="btn" type="button">Print</button>
+  </div>
+</dialog>
+
+<!-- Notifications -->
+<dialog id="notice-dialog" class="dialog">
+  <header class="dialog-head">
+    <h3 class="dialog-title">Notifications</h3>
+    <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+  </header>
+  <ul id="notice-list" class="notices"></ul>
+</dialog>
+
 <!-- Picture search -->
 <dialog id="search-dialog" class="dialog wide">
   <form id="search-form">
@@ -181,7 +239,7 @@
     addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
   }
 </script>
-<script src="js/config.js?v=202608191208"></script>
-<script type="module" src="js/app.js?v=202608191208"></script>
+<script src="js/config.js?v=202608252033"></script>
+<script type="module" src="js/app.js?v=202608252033"></script>
 </body>
 </html>
