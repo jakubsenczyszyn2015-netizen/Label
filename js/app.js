@@ -2,14 +2,15 @@ import {
   listPeople, addPerson, deletePerson,
   listFoods, addFood, updateFood, deleteFood,
 } from "./store.js";
-import {
-  labelPng, drawLabel, saveLabel, shareFile, prepareLabel, systemPrint,
-} from "./label.js";
+import { renderFor, prepareLabel, shareFile, saveFile, systemPrint } from "./label.js";
+import { bitmapCanvas } from "./thermal.js";
+import { MODELS, labelsFor, matchLoaded } from "./raster.js";
+import { printSettings, savePrintSettings } from "./settings.js";
 import { ALLERGENS } from "./allergens.js";
 import { shrinkToDataUrl, searchImages } from "./image.js";
 import {
-  MEDIA, mediaById, customMedia, printingSupported, connectPrinter,
-  currentPrinter, printToPrinter, defaultBridge, bridgeBlocked,
+  transports, connectPrinter, currentPrinter, reconnect, queryStatus, printBitmap,
+  defaultBridge, bridgeBlocked, bridgeTargets,
 } from "./printer.js";
 import {
   addNotice, onNotices, markAllSeen, unseenCount, checkForUpdate, watchForUpdates,
@@ -607,56 +608,51 @@ foodImageUrl.addEventListener("input", () => {
 
 /* ---------- Food detail, editing and labels ---------- */
 
+const detailStatus = document.getElementById("detail-status");
+const detailInfo = document.getElementById("detail-info");
+
+function say(message, tone = "") {
+  detailStatus.textContent = message;
+  detailStatus.className = `hint ${tone}`;
+  detailStatus.hidden = !message;
+}
+
+function sizeText(render, settings) {
+  const label = settings.labelSpec;
+  return `${label.name}${label.dk ? ` (${label.dk})` : ""} · ` +
+    `${render.widthMm.toFixed(0)} × ${render.heightMm.toFixed(0)}mm`;
+}
+
+// Renders and caches every format the moment the dialog opens, so the share
+// button can call navigator.share() inside the tap, as iOS requires.
+async function refreshDetail() {
+  if (!detailFood) return;
+  const food = detailFood;
+  const settings = printSettings();
+  labelFiles = null;
+  detailInfo.textContent = "Preparing label…";
+  const files = await prepareLabel(food, settings);
+  if (detailFood !== food) return;
+  labelFiles = files;
+  detailLabel.src = files.dataUrl;
+  detailInfo.textContent = sizeText(files.render, settings);
+}
+
 async function openFoodDetail(food) {
   detailFood = food;
-  labelFiles = null;
   detailTitle.textContent = food.name;
   detailLabel.removeAttribute("src");
   say("");
   openModal(detailDialog);
-
-  detailLabel.src = await labelPng(food);
-  // Ready before the first tap, so sharing runs inside the tap itself.
-  labelFiles = await prepareLabel(food);
-}
-
-detailDialog.querySelector("[data-close]").addEventListener("click", () => {
-  closeModal(detailDialog);
-});
-
-const detailStatus = document.getElementById("detail-status");
-
-function say(message) {
-  detailStatus.textContent = message;
-  detailStatus.hidden = !message;
-}
-
-const OUTCOME = {
-  shared: "",
-  cancelled: "",
-  saved: "Saved to your downloads.",
-  opened: "Opened in a new tab — press and hold to save it.",
-  blocked: "Your browser blocked the download. Press and hold the label above to save it.",
-  printing: "",
-};
-
-async function runAction(label, work) {
-  if (!detailFood) return;
-  say(`${label}…`);
-  try {
-    say(OUTCOME[await work()] ?? "");
-  } catch (error) {
-    say(`${label} failed: ${error.message}`);
-  }
+  await refreshDetail();
 }
 
 const holdDialog = document.getElementById("hold-dialog");
 const holdImage = document.getElementById("hold-image");
 const holdWhy = document.getElementById("hold-why");
 
-// Shown whenever the share sheet is unavailable or refuses the file. Pressing
-// and holding an image works on every phone, so this is the route that cannot
-// fail — an <a download> is inert inside an installed iOS app.
+// When the share sheet is missing or refuses the file: pressing and holding
+// an image works on every phone.
 function offerHold(reason) {
   holdWhy.textContent = reason;
   holdImage.src = detailLabel.src;
@@ -664,210 +660,316 @@ function offerHold(reason) {
   openModal(holdDialog);
 }
 
-// The share sheet is where Brother iPrint&Label, P-touch and AirPrint appear.
-// JPEG goes out rather than PNG: label apps expect camera-style images and
-// several reject PNG with an "unsupported file" message.
-document.getElementById("detail-share").addEventListener("click", () => {
-  if (!detailFood) return;
-  if (!labelFiles) {
-    say("Still preparing the label — try again in a second.");
-    return;
-  }
-  say("Opening share sheet…");
+function notReady() {
+  if (labelFiles) return false;
+  say("Still preparing the label — try again in a second.");
+  return true;
+}
 
-  Promise.resolve(shareFile(labelFiles.jpeg)).then((how) => {
-    say("");
+// Send to the Brother app. A label-sized PDF is what iPrint&Label accepts
+// from the share sheet — it's what iOS hands over from Print → Share — and
+// because the page is the label's own size it prints 1:1.
+document.getElementById("detail-share").addEventListener("click", () => {
+  if (!detailFood || notReady()) return;
+  say("");
+  shareFile(labelFiles.pdf).then((how) => {
     if (how === "unsupported") {
-      offerHold("This browser can't hand files to other apps, so save the " +
-        "label to your photos instead.");
+      // No file sharing for PDFs here; an image is the next best thing.
+      shareFile(labelFiles.png).then((next) => {
+        if (next === "unsupported" || next === "refused") {
+          offerHold("This browser can't send files to other apps, so save the label to your photos instead.");
+        }
+      });
     } else if (how === "refused") {
-      offerHold("The share sheet wouldn't take the file. Saving it to your " +
-        "photos works just as well.");
+      offerHold("The share sheet wouldn't take the label. Saving it to your photos works just as well.");
     }
   });
 });
 
+document.getElementById("detail-png").addEventListener("click", () => {
+  if (!notReady()) say(OUTCOME[saveFile(labelFiles.png)] || "");
+});
+
+document.getElementById("detail-pdf").addEventListener("click", () => {
+  if (!notReady()) say(OUTCOME[saveFile(labelFiles.pdf)] || "");
+});
+
+document.getElementById("detail-photos").addEventListener("click", () => {
+  if (notReady()) return;
+  shareFile(labelFiles.png).then((how) => {
+    if (how === "shared" || how === "cancelled") return;
+    offerHold("Press and hold the label to save it to your photos.");
+  });
+});
+
+const OUTCOME = {
+  saved: "Saved to your downloads.",
+  opened: "Opened in a new tab — press and hold to save it.",
+  blocked: "Your browser blocked the download. Press and hold the label above to save it.",
+};
+
+/* ---------- Print sheet ---------- */
+
 const printDialog = document.getElementById("print-dialog");
+const printPreview = document.getElementById("print-preview");
+const printInfo = document.getElementById("print-info");
+const printModel = document.getElementById("print-model");
+const printLabelSelect = document.getElementById("print-label");
+const printCopies = document.getElementById("print-copies");
+const printCut = document.getElementById("print-cut");
+const printPicture = document.getElementById("print-picture");
+const printStatus = document.getElementById("print-status");
 const printerPill = document.getElementById("printer-pill");
 const printerName = document.getElementById("printer-name");
-const printMedia = document.getElementById("print-media");
-const printCopies = document.getElementById("print-copies");
-const printStatus = document.getElementById("print-status");
-const connectUsb = document.getElementById("connect-usb");
-const connectBt = document.getElementById("connect-bt");
+const printSend = document.getElementById("print-send");
+const detectButton = document.getElementById("print-detect");
+const bridgeFields = document.getElementById("bridge-fields");
+const bridgeUrl = document.getElementById("bridge-url");
+const bridgeTarget = document.getElementById("bridge-target");
 
-const customSize = document.getElementById("custom-size");
-const customMm = document.getElementById("custom-mm");
+let printRender = null;
+let mismatch = null;
 
-printMedia.replaceChildren(...[...MEDIA, { id: "custom", label: "Custom size…" }]
-  .map((entry) => {
+printModel.replaceChildren(...["ql", "pt"].map((family) => {
+  const group = document.createElement("optgroup");
+  group.label = family === "ql" ? "QL label printers (DK rolls)" : "P-touch (TZe tape)";
+  for (const model of MODELS.filter((entry) => entry.family === family)) {
     const option = document.createElement("option");
-    option.value = entry.id;
-    option.textContent = entry.label;
+    option.value = model.id;
+    option.textContent = `Brother ${model.id}`;
+    group.append(option);
+  }
+  return group;
+}));
+
+function fillLabels(settings) {
+  printLabelSelect.replaceChildren(...labelsFor(settings.modelSpec).map((label) => {
+    const option = document.createElement("option");
+    option.value = label.id;
+    option.textContent = label.dk ? `${label.name} · ${label.dk}` : label.name;
     return option;
   }));
-
-printMedia.value = localStorage.getItem("label.media") || MEDIA[0].id;
-customMm.value = localStorage.getItem("label.media-mm") || "52";
-
-function syncMedia() {
-  customSize.hidden = printMedia.value !== "custom";
-  localStorage.setItem("label.media", printMedia.value);
-  localStorage.setItem("label.media-mm", customMm.value);
-}
-
-printMedia.addEventListener("change", syncMedia);
-customMm.addEventListener("change", syncMedia);
-syncMedia();
-
-// What the printer is actually asked to lay down.
-function chosenMedia() {
-  return printMedia.value === "custom"
-    ? customMedia(customMm.value)
-    : mediaById(printMedia.value);
+  printLabelSelect.value = settings.label;
 }
 
 function printSay(message, tone = "") {
-  printStatus.textContent = message;
+  printStatus.replaceChildren();
   printStatus.className = `hint ${tone}`;
   printStatus.hidden = !message;
+  if (!message) return;
+  printStatus.append(document.createTextNode(message));
+}
+
+function printSayError(error) {
+  printSay(error.message, "warn");
+  if (error.hint) {
+    const hint = document.createElement("span");
+    hint.className = "sub";
+    hint.textContent = ` ${error.hint}`;
+    printStatus.append(hint);
+  }
+  if (error.loaded) {
+    mismatch = error.loaded;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn small inline-btn";
+    button.textContent = `Use ${error.loaded.name}`;
+    button.addEventListener("click", () => applySettings({ label: error.loaded.id }));
+    printStatus.append(button);
+  }
 }
 
 function showPrinter() {
   const printer = currentPrinter();
-  printerPill.textContent = printer ? "Connected" : "No printer";
+  printerPill.textContent = printer ? "Connected" : "Not connected";
   printerPill.classList.toggle("on", Boolean(printer));
-  printerName.textContent = printer
-    ? printer.name
-    : "Connect a label printer to print directly.";
+  printerName.textContent = printer ? printer.name : "Choose how to reach the printer below.";
+  printSend.textContent = printer ? "Print" : "Connect a printer to print";
+  printSend.disabled = !printer;
+  detectButton.hidden = !printer?.canStatus;
 }
 
-document.getElementById("detail-print").addEventListener("click", () => {
+// Draws exactly the dots that will print, scaled up without smoothing.
+async function refreshPreview() {
   if (!detailFood) return;
-  showPrinter();
+  const settings = printSettings();
+  printInfo.textContent = "Laying out…";
+  printRender = await renderFor(detailFood, settings);
 
-  connectUsb.disabled = !navigator.usb;
-  connectBt.disabled = !navigator.bluetooth;
+  const canvas = bitmapCanvas(printRender.view);
+  printPreview.width = canvas.width;
+  printPreview.height = canvas.height;
+  printPreview.getContext("2d").drawImage(canvas, 0, 0);
+  printPreview.classList.toggle("tape", settings.modelSpec.family === "pt");
 
-  // Wi-Fi works everywhere the bridge is reachable, iPhones included.
-  printSay(printingSupported() ? "" : "USB and Bluetooth printing need Chrome " +
-    "or Edge. On iPhone, use Wi-Fi printing through the bridge.",
-    printingSupported() ? "" : "warn");
+  const dots = `${printRender.view.width} × ${printRender.view.height} dots`;
+  printInfo.textContent = `${sizeText(printRender, settings)} · ${dots}`;
+}
 
-  openModal(printDialog);
+async function applySettings(patch) {
+  const settings = savePrintSettings(patch);
+  printModel.value = settings.model;
+  fillLabels(settings);
+  printCopies.value = settings.copies;
+  printCut.checked = settings.cut;
+  printPicture.checked = settings.picture;
+  printPicture.disabled = !detailFood?.image_url;
+  mismatch = null;
+  await refreshPreview();
+  // Keep the detail preview and the shared files in step with the settings.
+  refreshDetail();
+}
+
+printModel.addEventListener("change", () => applySettings({ model: printModel.value }));
+printLabelSelect.addEventListener("change", () => applySettings({ label: printLabelSelect.value }));
+printCut.addEventListener("change", () => applySettings({ cut: printCut.checked }));
+printPicture.addEventListener("change", () => applySettings({ picture: printPicture.checked }));
+printCopies.addEventListener("change", () => {
+  const copies = Math.min(50, Math.max(1, Number(printCopies.value) || 1));
+  printCopies.value = copies;
+  savePrintSettings({ copies });
 });
 
-async function connect(kind) {
-  printSay("Choose your printer in the browser prompt…");
+for (const step of document.querySelectorAll("[data-step]")) {
+  step.addEventListener("click", () => {
+    const copies = Math.min(50, Math.max(1, (Number(printCopies.value) || 1) + Number(step.dataset.step)));
+    printCopies.value = copies;
+    savePrintSettings({ copies });
+  });
+}
+
+document.getElementById("detail-print").addEventListener("click", async () => {
+  if (!detailFood) return;
+  const available = transports();
+  document.getElementById("connect-usb").disabled = !available.usb;
+  document.getElementById("connect-bt").disabled = !available.bluetooth;
+  document.getElementById("connect-ble").disabled = !available.ble;
+  document.getElementById("print-unsupported").hidden = available.usb || available.bluetooth;
+
+  printSay("");
+  openModal(printDialog);
+  if (!currentPrinter()) await reconnect();
+  showPrinter();
+  await applySettings({});
+});
+
+async function connect(kind, options) {
+  printSay(kind === "bridge" ? "Contacting the bridge…" : "Choose your printer in the browser's list…");
   try {
-    const printer = await connectPrinter(kind);
+    const printer = await connectPrinter(kind, options);
     showPrinter();
     printSay(`Connected to ${printer.name}.`, "ok");
-    addNotice({
-      id: `printer-${printer.name}`,
-      level: "info",
-      title: "Printer connected",
-      body: `${printer.name} is ready to print labels.`,
-    });
+    if (printer.canStatus) detect(true);
   } catch (error) {
     showPrinter();
-    // Dismissing the chooser is a cancel, not a failure.
-    printSay(error.name === "NotFoundError"
-      ? "No printer chosen."
-      : `Could not connect: ${error.message}`, "warn");
+    if (error.name === "NotFoundError") printSay("No printer chosen.");
+    else printSayError(error);
   }
 }
+
+// Asks the printer what is loaded and switches the label to match.
+async function detect(quiet = false) {
+  if (!quiet) printSay("Asking the printer what's loaded…");
+  const status = await queryStatus().catch(() => null);
+  if (!status) {
+    if (!quiet) printSay("The printer didn't report its label. Choose the size by hand.", "warn");
+    return;
+  }
+  if (status.errors.length) {
+    printSay(`${status.errors.join(". ")}.`, "warn");
+    return;
+  }
+  const loaded = matchLoaded(printSettings().modelSpec, status);
+  if (!loaded) {
+    printSay(`The printer reports a ${status.width}mm label this app doesn't know. Choose the nearest size.`, "warn");
+    return;
+  }
+  await applySettings({ label: loaded.id });
+  printSay(`Loaded: ${loaded.name}. Ready.`, "ok");
+}
+
+detectButton.addEventListener("click", () => detect(false));
+document.getElementById("connect-usb").addEventListener("click", () => connect("usb"));
+document.getElementById("connect-bt").addEventListener("click", () => connect("bluetooth"));
+document.getElementById("connect-ble").addEventListener("click", () => connect("ble"));
+
+bridgeUrl.value = defaultBridge();
+
+document.getElementById("connect-bridge").addEventListener("click", async () => {
+  bridgeFields.hidden = !bridgeFields.hidden;
+  if (bridgeFields.hidden) return;
+  await loadBridgeTargets();
+});
+
+async function loadBridgeTargets() {
+  const bridge = bridgeUrl.value.trim();
+  bridgeTarget.replaceChildren();
+  if (bridgeBlocked(bridge)) {
+    printSay("This page is on https, so it can only reach a bridge on this same computer " +
+      "(http://localhost:8080). From a phone, open Label from the bridge's own address.", "warn");
+    return;
+  }
+  try {
+    const targets = await bridgeTargets(bridge);
+    for (const target of targets) {
+      const option = document.createElement("option");
+      option.value = target.id;
+      option.textContent = target.label;
+      option.target = target;
+      bridgeTarget.append(option);
+    }
+    localStorage.setItem("label.bridge", bridge);
+    printSay(targets.length ? "" : "The bridge has no printers set up.", targets.length ? "" : "warn");
+  } catch {
+    printSay("Couldn't reach the bridge. Is it running, and is this address right?", "warn");
+  }
+}
+
+bridgeUrl.addEventListener("change", loadBridgeTargets);
+
+document.getElementById("bridge-go").addEventListener("click", () => {
+  const option = bridgeTarget.selectedOptions[0];
+  if (!option) {
+    printSay("Pick a printer from the bridge first.", "warn");
+    return;
+  }
+  connect("bridge", { bridge: bridgeUrl.value.trim(), target: option.target });
+  bridgeFields.hidden = true;
+});
+
+printSend.addEventListener("click", async () => {
+  if (!detailFood || !currentPrinter()) return;
+  const settings = printSettings();
+  const copies = Math.min(50, Math.max(1, Number(printCopies.value) || 1));
+
+  printSend.disabled = true;
+  printSay(`Printing ${copies} label${copies > 1 ? "s" : ""}…`);
+  try {
+    if (!printRender) await refreshPreview();
+    const result = await printBitmap({
+      model: settings.modelSpec,
+      label: settings.labelSpec,
+      bitmap: printRender.print,
+      copies,
+      cut: settings.cut,
+    });
+    printSay(result.confirmed
+      ? `Printed ${copies} label${copies > 1 ? "s" : ""}. The printer confirmed it.`
+      : `Sent to the printer (${Math.round(result.bytes / 1024)} KB).`, "ok");
+  } catch (error) {
+    printSayError(error);
+  } finally {
+    printSend.disabled = !currentPrinter();
+  }
+});
 
 document.getElementById("system-print").addEventListener("click", async () => {
   if (!detailFood) return;
-  printSay("Opening the system print dialog…");
   try {
     await systemPrint(detailFood);
-    printSay("If your label printer isn't listed, it isn't on this network.", "");
   } catch (error) {
-    printSay(`Could not open printing: ${error.message}`, "warn");
+    printSay(`Couldn't open printing: ${error.message}`, "warn");
   }
-});
-
-connectUsb.addEventListener("click", () => connect("usb"));
-connectBt.addEventListener("click", () => connect("bluetooth"));
-
-const wifiFields = document.getElementById("wifi-fields");
-const printerHost = document.getElementById("printer-host");
-const bridgeUrl = document.getElementById("bridge-url");
-
-printerHost.value = localStorage.getItem("label.printer-host") || "";
-bridgeUrl.value = localStorage.getItem("label.bridge") || defaultBridge();
-
-document.getElementById("connect-wifi").addEventListener("click", () => {
-  wifiFields.hidden = !wifiFields.hidden;
-  if (!wifiFields.hidden) printerHost.focus();
-});
-
-document.getElementById("wifi-go").addEventListener("click", async () => {
-  const host = printerHost.value.trim();
-  const bridge = bridgeUrl.value.trim() || defaultBridge();
-
-  if (!host) {
-    printSay("Enter the printer's IP address — it's on the printer's network " +
-      "settings printout.", "warn");
-    return;
-  }
-  if (bridgeBlocked(bridge)) {
-    printSay("This page is on https, so it can't reach an http bridge. Open " +
-      "Label from the bridge's own address instead.", "warn");
-    return;
-  }
-
-  localStorage.setItem("label.printer-host", host);
-  localStorage.setItem("label.bridge", bridge);
-
-  printSay("Contacting the bridge…");
-  try {
-    const printer = await connectPrinter("wifi", { host, bridge });
-    showPrinter();
-    printSay(`Ready to print to ${printer.name}.`, "ok");
-    wifiFields.hidden = true;
-  } catch (error) {
-    showPrinter();
-    printSay(`Could not reach the bridge: ${error.message}`, "warn");
-  }
-});
-
-document.getElementById("print-send").addEventListener("click", async () => {
-  if (!detailFood) return;
-  if (!currentPrinter()) {
-    printSay("Connect a printer first.", "warn");
-    return;
-  }
-
-  const copies = Math.min(20, Math.max(1, Number(printCopies.value) || 1));
-  printSay(`Sending ${copies} label${copies > 1 ? "s" : ""}…`);
-
-  try {
-    const canvas = await drawLabel(detailFood);
-    await printToPrinter(canvas, chosenMedia(), copies);
-    printSay("Sent to the printer.", "ok");
-  } catch (error) {
-    printSay(`Printing failed: ${error.message}`, "warn");
-  }
-});
-
-document.getElementById("detail-png").addEventListener("click", () =>
-  runAction("Saving PNG", () => saveLabel(detailFood, "png")));
-
-document.getElementById("detail-pdf").addEventListener("click", () =>
-  runAction("Saving PDF", () => saveLabel(detailFood, "pdf")));
-
-document.getElementById("detail-photos").addEventListener("click", () => {
-  if (!labelFiles) {
-    say("Still preparing the label — try again in a second.");
-    return;
-  }
-  Promise.resolve(shareFile(labelFiles.jpeg)).then((how) => {
-    if (how === "shared" || how === "cancelled") return;
-    offerHold("Press and hold the label to save it to your photos.");
-  });
 });
 
 document.getElementById("detail-edit").addEventListener("click", () => {

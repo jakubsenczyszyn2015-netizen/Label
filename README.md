@@ -18,33 +18,16 @@ A minimal label-printing app, built as a static site for GitHub Pages.
   deleting a food removes it everywhere
 - A light/dark toggle sits in the top right of both screens; the choice is saved
   per device, never synced
-- **Direct label printing** (`js/printer.js`): connect a Brother QL or P-touch
-  over USB, Bluetooth or Wi-Fi and send Brother raster commands straight to it,
-  with no OS print dialog
-- Label sizes: QL 62mm, **52mm**, 29mm, P-touch 24mm and 12mm, plus a **custom
-  width in millimetres**. The raster line stays 90 bytes (720 dots) as QL
-  models require; the printable area is scaled and centred inside it
-- **Wi-Fi printing** works on any device, iPhones included, via the bridge in
-  `tools/print-bridge.mjs` — see below. USB and Bluetooth need Chrome or Edge
+- **Label printing for Brother QL and P-touch printers**, built to match
+  Brother's reference driver byte for byte — see *Printing* below
 - A bell at the top left holds app notices; when the page is running an older
   build than the deployed one it shows **Out dated!** with an Update button
   that clears the caches and service worker before reloading. Seen notices
   stay seen across restarts
 - On iPhone/iPad the app asks to be added to the Home Screen first, with
   step-by-step instructions. Desktop is never gated
-- Tap a food to preview its label, then **Send to label app** (share sheet —
-  Brother iPrint&Label, P-touch Design&Print, Dymo, AirPrint), **Print**,
-  **Save PNG**, **Save PDF**, **Save to Photos** or **Edit**
-- Sharing sends a JPEG, not a PNG: label apps expect camera-style images and
-  some reject PNG. The files are built when the dialog opens so the share call
-  runs inside the tap, which iOS requires
-- If the share sheet is missing or refuses the file, a save sheet appears with
-  the label to press and hold — an `<a download>` is inert inside an installed
-  iOS app, so the button must never rely on it
-- Wi-Fi label printers that speak AirPrint or Mopria can be reached from the
-  print sheet's system dialog option
-- PDFs are generated in the app (`js/pdf.js` embeds the label as a JPEG in a
-  one-page PDF), so saving one never depends on the print dialog
+- Tap a food to see its label exactly as it will print, then **Print label**,
+  **Send to Brother app**, **Save to Photos**, **Save PDF**, **Save PNG** or **Edit**
 - Unlocking is remembered on the device until you press the lock button
 - If Supabase is paused or unreachable, a maintenance notice explains it
   instead of showing a raw database error
@@ -72,24 +55,64 @@ in `index.html` so phones pick up the new build instead of a cached one.
 
 Push to `main`. In **Settings → Pages**, set the source to **GitHub Actions**; the workflow in `.github/workflows/pages.yml` publishes the repo root.
 
-## Wi-Fi printing
+## Printing
 
-Browsers can't open the raw TCP socket a Brother printer listens on (port
-9100), so a small bridge does it. Run it on any computer on the same Wi-Fi:
+### What gets printed
+
+`js/thermal.js` draws each label in pure black at the printer's own dot grid
+(300 dpi for QL, 180 dpi for P-touch), sized to the exact printable area of
+the chosen roll. Thermal printers can't print grey, so there is none: bold
+name, an unambiguous date (`01 SEP 2026`), and allergens in a box with an
+inverted header. Narrow rolls and tape turn the layout to run along the label.
+The preview, the PNG, the PDF and the printer all get the same dots.
+
+### Getting it to the printer
+
+| From | How |
+| --- | --- |
+| Computer or Android, Chrome/Edge | **USB** (WebUSB) or **Bluetooth** (Web Serial, for classic-Bluetooth Brother printers) |
+| iPhone/iPad | **Send to Brother app** — a PDF the size of the label, which iPrint&Label prints 1:1. Or the bridge |
+| Anything on the Wi-Fi | **Bridge** — `tools/print-bridge.mjs` on a computer that can reach the printer |
+
+The app reads the printer's status where it can: it detects which roll is
+loaded and selects it, refuses to print onto the wrong roll (the usual cause
+of a blinking red light), and reports when the printer has finished.
+
+The system print dialog (under *Printer not connecting?*) uses a page sized
+to the label, so Print → Share → iPrint&Label also prints 1:1.
+
+### The bridge
+
+A browser can't open the raw socket a network printer listens on, nor reach a
+printer plugged into another computer. The bridge does both, and serves the
+app so a phone can open it from there:
 
 ```
-node tools/print-bridge.mjs --port 8080 --printer 192.168.1.50
+node tools/print-bridge.mjs --list                       # what this computer can reach
+node tools/print-bridge.mjs --printer cups:Brother_QL_800   # macOS/Linux, USB QL-800
+node tools/print-bridge.mjs --printer '\\localhost\QL800'   # Windows, shared printer
+node tools/print-bridge.mjs --printer 192.168.1.50          # network printer
 ```
 
-It prints the addresses it's serving on. Open one of them on the phone — the
-bridge serves Label itself, so the page and the printer share an origin and
-the browser won't block the request as mixed content. In the print sheet,
-choose **Connect by Wi-Fi**, enter the printer's IP, and print.
+Open the address it prints on the phone, then **Bridge** in the print sheet.
+From the hosted (https) app, only a bridge on the same computer
+(`http://localhost:8080`) is reachable. Printers are fixed when the bridge
+starts — a phone can only choose among them — and it serves only the app's
+own files.
 
-The printer's IP is on its network settings printout (on a QL, hold the cut
-button, or check your router's device list). Opening Label from GitHub Pages
-over https cannot reach an http bridge — the app says so rather than failing
-silently.
+### Tests
+
+`tools/test-raster.mjs` checks the QL output against
+[brother_ql](https://github.com/pklaus/brother_ql), the reference driver:
+
+```
+python3 -m venv .bq && .bq/bin/pip install brother_ql==0.9.4 "Pillow<10"
+node tools/test-raster.mjs .bq/bin/python
+```
+
+Twelve model/label combinations, including the QL-800 on 62mm, 52×29mm and
+29mm, come out byte-identical. P-touch output follows Brother's PT raster
+reference but has no reference driver to test against.
 
 ## Supabase
 

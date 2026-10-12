@@ -1,6 +1,6 @@
 // Caches the app shell so Label opens instantly and works offline once
 // installed. Bump CACHE when the shell changes.
-const CACHE = "label-202608252123";
+const CACHE = "label-202610122212";
 const SHELL = [
   "./",
   "./index.html",
@@ -14,6 +14,9 @@ const SHELL = [
   "./js/printer.js",
   "./js/notices.js",
   "./js/pdf.js",
+  "./js/raster.js",
+  "./js/thermal.js",
+  "./js/settings.js",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/icon-192.png",

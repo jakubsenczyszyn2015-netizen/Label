@@ -969,3 +969,123 @@ select.field {
 
 .hint.left { text-align: left; margin-bottom: 8px; }
 .wide-btn { width: 100%; margin-bottom: 4px; }
+
+/* ==========================================================================
+   Print sheet — the preview is the exact dot grid, shown without smoothing
+   ========================================================================== */
+.print-sheet { width: min(94vw, 460px); }
+
+.label-stage,
+.print-figure {
+  margin: 0;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background:
+    repeating-linear-gradient(45deg, transparent 0 6px, rgba(0, 0, 0, .025) 6px 12px),
+    var(--surface-3);
+  display: grid;
+  place-items: center;
+}
+
+.label-stage .label-preview { border: 0; box-shadow: var(--shadow-2); border-radius: 4px; }
+
+.print-preview {
+  max-width: 100%;
+  max-height: 34dvh;
+  height: auto;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: var(--shadow-2);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* P-touch tape is usually long and thin; give it room to read. */
+.print-preview.tape { width: 100%; object-fit: contain; }
+
+.print-figure figcaption { margin-top: 10px; font-size: 12px; }
+
+.print-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 14px 0 10px;
+}
+
+.print-grid .label { margin: 0; }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row .field { flex: 1; min-width: 0; }
+
+.options { flex-wrap: wrap; gap: 10px 14px; margin-bottom: 12px; }
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.stepper .field {
+  width: 46px;
+  padding: 6px 2px;
+  border: 0;
+  text-align: center;
+  background: transparent;
+  box-shadow: none;
+  -moz-appearance: textfield;
+}
+
+.stepper .field::-webkit-inner-spin-button,
+.stepper .field::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+
+.connect-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+
+.bridge-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  animation: rise .2s ease;
+}
+
+.print-go { width: 100%; padding: 15px; font-size: 16px; margin-top: 4px; }
+
+#print-status { text-align: left; }
+#print-status .sub { color: var(--muted); }
+.inline-btn { display: block; margin-top: 8px; }
+
+.help {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.help summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  list-style-position: inside;
+}
+
+.help ul { padding-left: 18px; margin: 10px 0; display: grid; gap: 8px; }
+.help code { font-size: 12px; }

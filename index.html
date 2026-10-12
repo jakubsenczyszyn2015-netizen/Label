@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-build="202608252123">
+<html lang="en" data-build="202610122212">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -13,7 +13,7 @@
 <!-- iOS only accepts a PNG here; an SVG silently yields a blank home screen icon. -->
 <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=202608252123">
+<link rel="stylesheet" href="styles.css?v=202610122212">
 </head>
 <body>
 
@@ -143,20 +143,21 @@
     <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
   </header>
 
-  <img id="detail-label" class="label-preview" alt="Label preview">
+  <div class="label-stage"><img id="detail-label" class="label-preview" alt="Label preview"></div>
+  <p id="detail-info" class="hint"></p>
   <p id="detail-status" class="hint" hidden></p>
 
   <div class="action-grid">
-    <button id="detail-share" class="btn" type="button">Send to label app</button>
-    <button id="detail-print" class="btn ghost small" type="button">Print</button>
-    <button id="detail-png" class="btn ghost small" type="button">Save PNG</button>
-    <button id="detail-pdf" class="btn ghost small" type="button">Save PDF</button>
+    <button id="detail-print" class="btn" type="button">Print label</button>
+    <button id="detail-share" class="btn ghost small" type="button">Send to Brother app</button>
     <button id="detail-photos" class="btn ghost small" type="button">Save to Photos</button>
+    <button id="detail-pdf" class="btn ghost small" type="button">Save PDF</button>
+    <button id="detail-png" class="btn ghost small" type="button">Save PNG</button>
     <button id="detail-edit" class="btn ghost small" type="button">Edit</button>
   </div>
   <p class="hint">
-    If your label app isn't in the share sheet: Save to Photos, then open
-    iPrint&amp;Label and import the picture from your photo library.
+    Send to Brother app hands iPrint&amp;Label a PDF exactly the size of your
+    label — pick the same roll in the Brother app and it prints 1:1.
   </p>
 </dialog>
 
@@ -175,60 +176,78 @@
   <img id="hold-image" class="label-preview holdable" alt="Label to save">
 </dialog>
 
-<!-- Custom label printing -->
-<dialog id="print-dialog" class="dialog wide">
+<!-- Label printing -->
+<dialog id="print-dialog" class="dialog wide print-sheet">
   <header class="dialog-head">
     <h3 class="dialog-title">Print label</h3>
     <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
   </header>
 
-  <div id="printer-state" class="printer-state">
-    <span class="pill" id="printer-pill">No printer</span>
-    <span id="printer-name" class="printer-name">Connect a label printer to print directly.</span>
+  <figure class="print-figure">
+    <canvas id="print-preview" class="print-preview" aria-label="Exactly what will print"></canvas>
+    <figcaption id="print-info" class="hint"></figcaption>
+  </figure>
+
+  <div class="print-grid">
+    <label class="label" for="print-model">Printer</label>
+    <select id="print-model" class="field"></select>
+
+    <label class="label" for="print-label">Label</label>
+    <div class="row">
+      <select id="print-label" class="field"></select>
+      <button id="print-detect" class="btn ghost small" type="button" hidden>Detect</button>
+    </div>
+  </div>
+
+  <div class="row options">
+    <div class="stepper" role="group" aria-label="Copies">
+      <button class="icon-btn" type="button" data-step="-1" aria-label="Fewer copies">−</button>
+      <input id="print-copies" class="field" type="number" min="1" max="50" value="1" aria-label="Copies">
+      <button class="icon-btn" type="button" data-step="1" aria-label="More copies">+</button>
+    </div>
+    <label class="check"><input id="print-cut" type="checkbox" checked> Cut each</label>
+    <label class="check"><input id="print-picture" type="checkbox"> Picture</label>
+  </div>
+
+  <div class="printer-state">
+    <span class="pill" id="printer-pill">Not connected</span>
+    <span id="printer-name" class="printer-name"></span>
   </div>
 
   <div class="connect-row">
-    <button id="connect-usb" class="btn ghost small" type="button">Connect by USB</button>
-    <button id="connect-bt" class="btn ghost small" type="button">Connect by Bluetooth</button>
-    <button id="connect-wifi" class="btn ghost small" type="button">Connect by Wi-Fi</button>
+    <button id="connect-usb" class="btn ghost small" type="button">USB</button>
+    <button id="connect-bt" class="btn ghost small" type="button">Bluetooth</button>
+    <button id="connect-bridge" class="btn ghost small" type="button">Bridge</button>
+    <button id="connect-ble" class="btn ghost small" type="button">BLE</button>
   </div>
 
-  <div id="wifi-fields" hidden>
-    <label class="label" for="printer-host">Printer IP address</label>
-    <input id="printer-host" class="field" type="text" inputmode="decimal"
-           placeholder="192.168.1.50" autocomplete="off">
-    <label class="label" for="bridge-url">Print bridge</label>
-    <input id="bridge-url" class="field" type="url" placeholder="http://192.168.1.20:8080">
-    <p class="hint left">
-      Run <code>node tools/print-bridge.mjs</code> on a computer on the same
-      Wi-Fi, then open Label from the address it prints.
-    </p>
-    <button id="wifi-go" class="btn small wide-btn" type="button">Connect</button>
+  <div id="bridge-fields" class="bridge-fields" hidden>
+    <label class="label" for="bridge-url">Bridge address</label>
+    <input id="bridge-url" class="field" type="url" placeholder="http://localhost:8080">
+    <label class="label" for="bridge-target">Printer</label>
+    <select id="bridge-target" class="field"></select>
+    <button id="bridge-go" class="btn small" type="button">Use this printer</button>
   </div>
 
-  <p class="hint left">
-    Wi-Fi label printers (AirPrint or Mopria) can also be reached through the
-    system dialog:
+  <p id="print-unsupported" class="hint left" hidden>
+    This browser can't reach printers directly (no iPhone browser can).
+    Use the Bridge, or <strong>Send to Brother app</strong> from the label screen.
   </p>
-  <button id="system-print" class="btn ghost small wide-btn" type="button">Use system print dialog</button>
-
-  <label class="label" for="print-media">Label size</label>
-  <select id="print-media" class="field"></select>
-
-  <div id="custom-size" hidden>
-    <label class="label" for="custom-mm">Width in millimetres</label>
-    <input id="custom-mm" class="field" type="number" min="6" max="62" step="1" value="52">
-  </div>
-
-  <label class="label" for="print-copies">Copies</label>
-  <input id="print-copies" class="field" type="number" min="1" max="20" value="1">
 
   <p id="print-status" class="hint" hidden></p>
 
-  <div class="dialog-actions">
-    <button class="btn ghost" type="button" data-close>Close</button>
-    <button id="print-send" class="btn" type="button">Print</button>
-  </div>
+  <button id="print-send" class="btn print-go" type="button" disabled>Connect a printer to print</button>
+
+  <details class="help">
+    <summary>Printer not connecting?</summary>
+    <ul>
+      <li><strong>QL-800 / QL-700:</strong> if the green <em>Editor Lite</em> light is on, hold that button until it goes out — otherwise the printer acts as a USB stick.</li>
+      <li><strong>USB on Windows:</strong> the Brother driver keeps the printer to itself. Run the bridge instead (it prints through the driver), or switch the device to WinUSB with Zadig.</li>
+      <li><strong>Bluetooth:</strong> pair the printer in your computer or phone's Bluetooth settings first, then choose it here. Make sure no other phone is connected to it.</li>
+      <li><strong>Wrong size or a red light:</strong> the label chosen here must match the roll in the printer. Tap <em>Detect</em> to read it from the printer.</li>
+    </ul>
+    <button id="system-print" class="btn ghost small wide-btn" type="button">Use the system print dialog instead</button>
+  </details>
 </dialog>
 
 <!-- Notifications -->
@@ -279,7 +298,7 @@
     addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
   }
 </script>
-<script src="js/config.js?v=202608252123"></script>
-<script type="module" src="js/app.js?v=202608252123"></script>
+<script src="js/config.js?v=202610122212"></script>
+<script type="module" src="js/app.js?v=202610122212"></script>
 </body>
 </html>
